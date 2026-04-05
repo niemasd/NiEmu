@@ -15,6 +15,7 @@ import pygame
 WIDTH  = 64
 HEIGHT = 32
 FPS = 60
+CPU_PER_FRAME = 10
 FONT_SET = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
     0x20, 0x60, 0x20, 0x20, 0x70, # 1
@@ -107,8 +108,8 @@ class CHIP8:
             self.instructions[0xF01E | x00] = lambda vx=vx: self.ADD   (self.I,  vx.get(), carry=False)
             self.instructions[0xF029 | x00] = lambda vx=vx: self.LD    (self.I,  0x50 + (5 * vx.get()))
             self.instructions[0xF033 | x00] = lambda vx=vx: self.LD_B  (self.I,  vx.get())
-            self.instructions[0xF055 | x00] = lambda vx=vx: self.LD_RANGE_I_VX(x)
-            self.instructions[0xF065 | x00] = lambda vx=vx: self.LD_RANGE_VX_I(x)
+            self.instructions[0xF055 | x00] = lambda x=x: self.LD_RANGE_I_VX(x)
+            self.instructions[0xF065 | x00] = lambda x=x: self.LD_RANGE_VX_I(x)
             for kk in range(0x00, 0x100):
                 self.instructions[mask_se_vx_kk  | kk] = lambda vx=vx, kk=kk: self.SE (vx, kk)
                 self.instructions[mask_sne_vx_kk | kk] = lambda vx=vx, kk=kk: self.SNE(vx, kk)
@@ -267,18 +268,17 @@ class CHIP8:
     def DRW(self, x, y, height):
         x %= WIDTH
         y %= HEIGHT
-        f_result = False
+        collision = False
         for row in range(height):
             sprite_byte = self.memory[self.I.get() + row]
             for col in range(8):
-                sprite_pixel = bool(sprite_byte & (0x80 >> col))
-                if sprite_pixel:
-                    if self.video[y + row][x + col]:
-                        f_result = True
-                        self.video[y + row][x + col] = False
-                    else:
-                        self.video[y + row][x + col] = True
-        self.V[0xF].set(f_result)
+                if bool(sprite_byte & (0x80 >> col)):
+                    px = (x + col) % WIDTH
+                    py = (y + row) % HEIGHT
+                    if self.video[py][px]:
+                        collision = True
+                    self.video[py][px] ^= True
+        self.V[0xF].set(collision)
 
     # 0xEX9E = SKP VX = Skip Next Instruction if Key VX is Pressed
     def SKP(self, register):
@@ -337,7 +337,8 @@ class CHIP8:
                         self.keypad[KEY_MAP[event.key]] = False
 
             # update game
-            self.cycle()
+            for _ in range(CPU_PER_FRAME):
+                self.cycle()
             with pygame.PixelArray(surface) as pxarray:
                 for y, row in enumerate(self.video):
                     for x, val in enumerate(row):
