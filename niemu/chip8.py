@@ -34,6 +34,7 @@ FONT_SET = [
     0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
     0xF0, 0x80, 0xF0, 0x80, 0x80, # F
 ]
+'''
 KEY_MAP = {
     pygame.K_1: 0x1,
     pygame.K_2: 0x2,
@@ -52,6 +53,25 @@ KEY_MAP = {
     pygame.K_c: 0xB,
     pygame.K_v: 0xF,
 }
+'''
+KEY_MAP = [
+    pygame.K_x, # 0x0
+    pygame.K_1, # 0x1
+    pygame.K_2, # 0x2
+    pygame.K_3, # 0x3
+    pygame.K_q, # 0x4
+    pygame.K_w, # 0x5
+    pygame.K_e, # 0x6
+    pygame.K_a, # 0x7
+    pygame.K_s, # 0x8
+    pygame.K_d, # 0x9
+    pygame.K_z, # 0xA
+    pygame.K_c, # 0xB
+    pygame.K_4, # 0xC
+    pygame.K_r, # 0xD
+    pygame.K_f, # 0xE
+    pygame.K_v, # 0xF
+]
 
 # class to emulate CHIP-8
 class CHIP8:
@@ -323,18 +343,11 @@ class CHIP8:
         while running:
             # handle next key input
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
+                if (event.type == pygame.QUIT) or ((event.type == pygame.KEYDOWN) and (event.key == pygame.K_ESCAPE)):
                     running = False
                     break
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        running = False
-                        break
-                    elif event.key in KEY_MAP:
-                        self.keypad[KEY_MAP[event.key]] = True
-                elif event.type == pygame.KEYUP:
-                    if event.key in KEY_MAP:
-                        self.keypad[KEY_MAP[event.key]] = False
+            pressed = pygame.key.get_pressed()
+            self.keypad = [pressed[KEY_MAP[i]] for i in range(16)]
 
             # update game
             for _ in range(CPU_PER_FRAME):
