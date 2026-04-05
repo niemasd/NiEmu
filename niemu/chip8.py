@@ -68,6 +68,7 @@ class CHIP8:
             mask_and_vx_vy = 0x8002 | x00
             mask_xor_vx_vy = 0x8003 | x00
             mask_add_vx_vy = 0x8004 | x00
+            mask_sub_vx_vy = 0x8005 | x00
             for kk in range(0x00, 0x100):
                 self.instructions[mask_se_vx_kk  | kk] = lambda: self.SE (vx, kk)
                 self.instructions[mask_sne_vx_kk | kk] = lambda: self.SNE(vx, kk)
@@ -82,6 +83,7 @@ class CHIP8:
                 self.instructions[mask_and_vx_vy | y0] = lambda: self.AND(vx, vy.get())
                 self.instructions[mask_xor_vx_vy | y0] = lambda: self.XOR(vx, vy.get())
                 self.instructions[mask_add_vx_vy | y0] = lambda: self.ADD(vx, vy.get())
+                self.instructions[mask_sub_vx_vy | y0] = lambda: self.SUB(vx, vy.get())
 
     # 0x00E0 = CLS = Clear Screen
     def CLS(self):
@@ -121,7 +123,13 @@ class CHIP8:
     # 0x7XKK = ADD VX, KK = Increase VX by KK
     # 0x8XY4 = ADD VX, VY = Increase VX by VY
     def ADD(self, register, value):
-        register.add(value)
+        orig = register.get()
+        result = (orig + value) & 0xFF
+        if result < orig:
+            self.registers[0xF].set(1)
+        else:
+            self.registers[0xF].set(0)
+        register.set(result)
 
     # 0x8XY1 = OR VX, VY = Set VX to VX | VY
     def OR(self, register, value):
@@ -134,6 +142,18 @@ class CHIP8:
     # 0x8XY3 = XOR VX, VY = Set VX to VX ^ VY
     def XOR(self, register, value):
         register.set(register.get() ^ value)
+
+    # 0x8XY5 = SUB VX, VY = Decrease VX by VY
+    def SUB(self, register, value):
+        orig = register.get()
+        if orig > value:
+            self.registers[0xF].set(1)
+        else:
+            self.registers[0xF].set(0)
+        result = orig - value
+        while result < 0:
+            result += 256
+        register.set(result)
 
     # load a game
     def load_game(self, path):
