@@ -7,10 +7,14 @@ https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter
 '''
 
 # imports
-from niemu.common import load_game_data, Memory, Register8, Register16
+from niemu.common import COLOR_BLACK, COLOR_WHITE, load_game_data, Memory, Register8, Register16
 from random import randint
+import pygame
 
 # constants
+WIDTH  = 64
+HEIGHT = 32
+FPS = 60
 FONT_SET = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
     0x20, 0x60, 0x20, 0x20, 0x70, # 1
@@ -29,6 +33,24 @@ FONT_SET = [
     0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
     0xF0, 0x80, 0xF0, 0x80, 0x80, # F
 ]
+KEY_MAP = {
+    pygame.K_1: 0x1,
+    pygame.K_2: 0x2,
+    pygame.K_3: 0x3,
+    pygame.K_4: 0xC,
+    pygame.K_q: 0x4,
+    pygame.K_w: 0x5,
+    pygame.K_e: 0x6,
+    pygame.K_r: 0xD,
+    pygame.K_a: 0x7,
+    pygame.K_s: 0x8,
+    pygame.K_d: 0x9,
+    pygame.K_f: 0xE,
+    pygame.K_z: 0xA,
+    pygame.K_x: 0x0,
+    pygame.K_c: 0xB,
+    pygame.K_v: 0xF,
+}
 
 # class to emulate CHIP-8
 class CHIP8:
@@ -42,9 +64,8 @@ class CHIP8:
         self.ST = Register8(0)                          # Sound Timer (ST)
         self.SP = Register8(0)                          # Stack Pointer
         self.stack = [Register16(0) for _ in range(16)] # Stack
-        self.video = [[False]*64]*32                    # Monochrome Video (64 x 32)
+        self.video = [[False]*WIDTH]*HEIGHT             # Monochrome Video (64 x 32)
         self.keypad = [False]*16                        # State of Input Keys (True = Pressed)
-        self.draw_flag = False                          # Draw Flag
         self.memory = Memory(0x1000)                    # Memory (4 KB)
         self.memory[:len(FONT_SET)] = FONT_SET          # Load font set into memory
 
@@ -77,13 +98,22 @@ class CHIP8:
             mask_sne_vx_vy   = 0x9000 | x00
             mask_rnd_vx_kk   = 0xC000 | x00
             mask_drw_vx_vy_n = 0xD000 | x00
-            self.instructions[0xE09E | x00] = lambda: self.SKP (vx)
-            self.instructions[0xE0A1 | x00] = lambda: self.SKNP(vx)
+            self.instructions[0xE09E | x00] = lambda: self.SKP   (vx)
+            self.instructions[0xE0A1 | x00] = lambda: self.SKNP  (vx)
+            self.instructions[0xF007 | x00] = lambda: self.LD    (vx, self.DT.get())
+            self.instructions[0xF00A | x00] = lambda: self.LD_KEY(vx)
+            self.instructions[0xF015 | x00] = lambda: self.LD    (self.DT, vx.get())
+            self.instructions[0xF018 | x00] = lambda: self.LD    (self.ST, vx.get())
+            self.instructions[0xF01E | x00] = lambda: self.ADD   (self.I,  vx.get(), carry=False)
+            self.instructions[0xF029 | x00] = lambda: self.LD    (self.I,  0x50 + (5 * vx.get()))
+            self.instructions[0xF033 | x00] = lambda: self.LD_B  (self.I,  vx.get())
+            self.instructions[0xF055 | x00] = lambda: self.LD_RANGE_I_VX(x)
+            self.instructions[0xF065 | x00] = lambda: self.LD_RANGE_VX_I(x)
             for kk in range(0x00, 0x100):
                 self.instructions[mask_se_vx_kk  | kk] = lambda: self.SE (vx, kk)
                 self.instructions[mask_sne_vx_kk | kk] = lambda: self.SNE(vx, kk)
                 self.instructions[mask_ld_vx_kk  | kk] = lambda: self.LD (vx, kk)
-                self.instructions[mask_add_vx_kk | kk] = lambda: self.ADD(vx, kk)
+                self.instructions[mask_add_vx_kk | kk] = lambda: self.ADD(vx, kk, carry=False)
                 self.instructions[mask_rnd_vx_kk | kk] = lambda: self.RND(vx, kk)
             for y in range(16):
                 vy = self.V[y]
@@ -94,7 +124,7 @@ class CHIP8:
                 self.instructions[mask_or_vx_vy   | y0] = lambda: self.OR (vx, vy.get())
                 self.instructions[mask_and_vx_vy  | y0] = lambda: self.AND(vx, vy.get())
                 self.instructions[mask_xor_vx_vy  | y0] = lambda: self.XOR(vx, vy.get())
-                self.instructions[mask_add_vx_vy  | y0] = lambda: self.ADD(vx, vy.get())
+                self.instructions[mask_add_vx_vy  | y0] = lambda: self.ADD(vx, vy.get(), carry=True)
                 self.instructions[mask_sub_vx_vy  | y0] = lambda: self.SUB(vx, vy.get())
                 self.instructions[mask_shr_vx_vy  | y0] = lambda: self.SHR(vx)
                 self.instructions[mask_subn_vx_vy | y0] = lambda: self.SUBN(vx, vy.get())
@@ -105,7 +135,7 @@ class CHIP8:
 
     # 0x00E0 = CLS = Clear Screen
     def CLS(self):
-        self.video = [[False]*64]*32
+        self.video = [[False]*WIDTH]*HEIGHT
 
     # 0x00EE = RET = Return from Subroutine
     def RET(self):
@@ -138,8 +168,44 @@ class CHIP8:
     # 0x6XKK = LD VX, KK = Load KK into VX
     # 0x8XY0 = LD VX, VY = Load VY into VX
     # 0xANNN = LD I, NNN = Load NNN into I
+    # 0xFX07 = LD VX, DT = Load DT into VX
+    # 0xFX15 = LD DT, VX = Load VX into DT
+    # 0xFX18 = LD ST, VX = Load VX into ST
+    # 0xFX29 = LD F, VX = Load Font of Digit VX into I
     def LD(self, register, value):
         register.set(value)
+
+    # 0xFX0A = LD VX, K = Wait for Key to be Pressed, and Load It into VX
+    def LD_KEY(self, register):
+        repeat = True
+        for i in range(16):
+            if self.keypad[i]:
+                register.set(i)
+                repeat = False
+                break
+        if repeat:
+            self.PC.add(-2)
+
+    # 0xFX33 = LD B, VX = Load BCD Representation of VX into I, I+1, and I+2
+    def LD_B(self, register, value):
+        orig_i = register.get()
+        self.memory[orig_i + 2] = value % 10
+        value //= 10
+        self.memory[orig_i + 1] = value % 10
+        value //= 10
+        self.memory[orig_i    ] = value % 10
+
+    # 0xFX55 = LD [I], VX = Load V0 through VX into I through I+X
+    def LD_RANGE_I_VX(self, x):
+        orig_i = self.I.get()
+        for i in range(x + 1):
+            self.memory[orig_i + i] = self.registers[i].get()
+
+    # 0xFX65 = LD VX, [I] = Load I through I+X into V0 through VX
+    def LD_RANGE_VX_I(self, x):
+        orig_i = self.I.get()
+        for i in range(x + 1):
+            self.registers[i].set(self.memory[orig_i + i])
 
     # 0x8XY1 = OR VX, VY = Set VX to VX | VY
     def OR(self, register, value):
@@ -155,10 +221,12 @@ class CHIP8:
 
     # 0x7XKK = ADD VX, KK = Increase VX by KK
     # 0x8XY4 = ADD VX, VY = Increase VX by VY
-    def ADD(self, register, value):
+    # 0xFX1E = ADD I, VX = Increase I by VX
+    def ADD(self, register, value, carry=False):
         orig = register.get()
         result = (orig + value) & 0xFF
-        self.registers[0xF].set(result < orig)
+        if carry:
+            self.registers[0xF].set(result < orig)
         register.set(result)
 
     # 0x8XY5 = SUB VX, VY = Decrease VX by VY
@@ -197,14 +265,14 @@ class CHIP8:
 
     # 0xDXYN = DRW VX, VY, N = Display N-byte Sprite Starting at (VX, VY)
     def DRW(self, x, y, height):
-        xpos = x % 64
-        ypos = y % 32
+        xpos = x % WIDTH
+        ypos = y % HEIGHT
         f_result = False
         for row in range(height):
             sprite_byte = self.memory[self.I + row]
             for col in range(8):
                 sprite_pixel = bool(sprite_byte & (0x80 >> col))
-                screen_pixel = self.video[((ypos + row) * 64) + (xpos + col)]
+                screen_pixel = self.video[((ypos + row) * WIDTH) + (xpos + col)]
                 if sprite_pixel:
                     if screen_pixel:
                         f_result = True
@@ -228,23 +296,51 @@ class CHIP8:
         data = load_game_data(path)
         self.memory[0x200 : 0x200 + len(data)] = memoryview(data)
 
-    # emulation loop
-    def run(self):
-        while True:
-            self.emulate_cycle()
-            if self.draw_flag:
-                self.draw_video()
-            self.set_keys()
-
     # emulate a single cycle
-    def emulate_cycle(self):
+    def cycle(self):
         pc_orig = self.PC.get()
         opcode = (self.memory[pc_orig] << 8) | self.memory[pc_orig + 1]
+        self.PC.add(2)
         try:
             instruction = self.instructions[opcode]
             assert instruction is not None
         except:
             raise ValueError(f"Unknown opcode: 0x{opcode:02X}")
+        if self.DT.get() > 0:
+            self.DT.add(-1)
+        if self.ST.get() > 0:
+            self.ST.add(-1)
+
+    # emulation loop
+    def run(self):
+        # set up pygame
+        pygame.init()
+        window = pygame.display.set_mode((WIDTH*15, HEIGHT*15))
+        surface = pygame.Surface((WIDTH, HEIGHT))
+        surface.fill((0, 0, 0))
+        clock = pygame.time.Clock()
+
+        # run game
+        running = True
+        while running:
+            # handle next key input
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                    break
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        running = False
+                        break
+                    elif event.key in KEY_MAP:
+                        self.keypad[KEY_MAP[event.key]] = True
+
+            # update screen and wait for next tick
+            with pygame.PixelArray(surface) as pxarray:
+                for y, row in enumerate(self.video):
+                    for x, val in enumerate(row):
+                        pxarray[x, y] = COLOR_WHITE if val else COLOR_BLACK
+            clock.tick(FPS)
 
 # run program
 if __name__ == "__main__":

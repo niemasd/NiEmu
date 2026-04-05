@@ -9,6 +9,8 @@ from pathlib import Path
 
 # constants
 ARCHIVE_EXTS = {'.zip'}
+COLOR_BLACK = (  0,   0,   0)
+COLOR_WHITE = (255, 255, 255)
 
 # dummy function that doesn't do anything
 def dummy():
