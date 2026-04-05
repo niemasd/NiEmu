@@ -15,7 +15,7 @@ import pygame
 WIDTH  = 64
 HEIGHT = 32
 FPS = 60
-CPU_PER_FRAME = 10
+CYCLES_PER_FRAME = 10
 FONT_SET = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
     0x20, 0x60, 0x20, 0x20, 0x70, # 1
@@ -125,7 +125,7 @@ class CHIP8:
             self.instructions[0xF00A | x00] = lambda vx=vx: self.LD_KEY(vx)
             self.instructions[0xF015 | x00] = lambda vx=vx: self.LD    (self.DT, vx.get())
             self.instructions[0xF018 | x00] = lambda vx=vx: self.LD    (self.ST, vx.get())
-            self.instructions[0xF01E | x00] = lambda vx=vx: self.ADD   (self.I,  vx.get(), carry=False)
+            self.instructions[0xF01E | x00] = lambda vx=vx: self.I.add (vx.get())
             self.instructions[0xF029 | x00] = lambda vx=vx: self.LD    (self.I,  0x50 + (5 * vx.get()))
             self.instructions[0xF033 | x00] = lambda vx=vx: self.LD_B  (self.I,  vx.get())
             self.instructions[0xF055 | x00] = lambda x=x: self.LD_RANGE_I_VX(x)
@@ -134,7 +134,7 @@ class CHIP8:
                 self.instructions[mask_se_vx_kk  | kk] = lambda vx=vx, kk=kk: self.SE (vx, kk)
                 self.instructions[mask_sne_vx_kk | kk] = lambda vx=vx, kk=kk: self.SNE(vx, kk)
                 self.instructions[mask_ld_vx_kk  | kk] = lambda vx=vx, kk=kk: self.LD (vx, kk)
-                self.instructions[mask_add_vx_kk | kk] = lambda vx=vx, kk=kk: self.ADD(vx, kk, carry=False)
+                self.instructions[mask_add_vx_kk | kk] = lambda vx=vx, kk=kk: vx.add  (kk)
                 self.instructions[mask_rnd_vx_kk | kk] = lambda vx=vx, kk=kk: self.RND(vx, kk)
             for y in range(16):
                 vy = self.V[y]
@@ -145,7 +145,7 @@ class CHIP8:
                 self.instructions[mask_or_vx_vy   | y0] = lambda vx=vx, vy=vy: self.OR (vx, vy.get())
                 self.instructions[mask_and_vx_vy  | y0] = lambda vx=vx, vy=vy: self.AND(vx, vy.get())
                 self.instructions[mask_xor_vx_vy  | y0] = lambda vx=vx, vy=vy: self.XOR(vx, vy.get())
-                self.instructions[mask_add_vx_vy  | y0] = lambda vx=vx, vy=vy: self.ADD(vx, vy.get(), carry=True)
+                self.instructions[mask_add_vx_vy  | y0] = lambda vx=vx, vy=vy: self.ADD(vx, vy.get())
                 self.instructions[mask_sub_vx_vy  | y0] = lambda vx=vx, vy=vy: self.SUB(vx, vy.get())
                 self.instructions[mask_shr_vx_vy  | y0] = lambda vx=vx, vy=vy: self.SHR(vx)
                 self.instructions[mask_subn_vx_vy | y0] = lambda vx=vx, vy=vy: self.SUBN(vx, vy.get())
@@ -240,14 +240,11 @@ class CHIP8:
     def XOR(self, register, value):
         register.set(register.get() ^ value)
 
-    # 0x7XKK = ADD VX, KK = Increase VX by KK
     # 0x8XY4 = ADD VX, VY = Increase VX by VY
-    # 0xFX1E = ADD I, VX = Increase I by VX
-    def ADD(self, register, value, carry=False):
+    def ADD(self, register, value):
         orig = register.get()
         result = (orig + value) & 0xFF
-        if carry:
-            self.V[0xF].set(result < orig)
+        self.V[0xF].set(result < orig)
         register.set(result)
 
     # 0x8XY5 = SUB VX, VY = Decrease VX by VY
@@ -330,7 +327,7 @@ class CHIP8:
             self.ST.add(-1)
 
     # emulation loop
-    def run(self):
+    def run(self, cycles_per_frame=CYCLES_PER_FRAME):
         # set up pygame
         pygame.init()
         window = pygame.display.set_mode((WIDTH*15, HEIGHT*15))
@@ -350,7 +347,7 @@ class CHIP8:
             self.keypad = [pressed[KEY_MAP[i]] for i in range(16)]
 
             # update game
-            for _ in range(CPU_PER_FRAME):
+            for _ in range(cycles_per_frame):
                 self.cycle()
             with pygame.PixelArray(surface) as pxarray:
                 for y, row in enumerate(self.video):
@@ -363,7 +360,12 @@ class CHIP8:
 # run program
 if __name__ == "__main__":
     from sys import argv
-    assert len(argv) == 2, "USAGE: %s <game_rom>" % argv[0]
+    if len(argv) == 2:
+        cycles_per_frame = CYCLES_PER_FRAME
+    elif len(argv) == 3:
+        cycles_per_frame = int(argv[2])
+    else:
+        raise ValueError("USAGE: %s <game_rom> [cycles_per_frame=%d]" % (argv[0], CYCLES_PER_FRAME))
     chip8 = CHIP8()
     chip8.load_game(argv[1])
-    chip8.run()
+    chip8.run(cycles_per_frame=cycles_per_frame)
