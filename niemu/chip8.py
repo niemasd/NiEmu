@@ -42,8 +42,8 @@ class CHIP8:
         self.ST = Register8(0)                          # Sound Timer (ST)
         self.SP = Register8(0)                          # Stack Pointer
         self.stack = [Register16(0) for _ in range(16)] # Stack
-        self.graphics = [[False]*64]*32                 # Monochrome Graphics (64 x 32)
-        self.key = [False]*16                           # State of Input Keys (True = Pressed)
+        self.video = [[False]*64]*32                    # Monochrome Video (64 x 32)
+        self.keypad = [False]*16                        # State of Input Keys (True = Pressed)
         self.draw_flag = False                          # Draw Flag
         self.memory = Memory(0x1000)                    # Memory (4 KB)
         self.memory[:len(FONT_SET)] = FONT_SET          # Load font set into memory
@@ -53,52 +53,71 @@ class CHIP8:
         self.instructions[0x00E0] = self.CLS
         self.instructions[0x00EE] = self.RET
         for nnn in range(0x000, 0x1000):
-            self.instructions[0x1000 | nnn] = lambda: self.JP(nnn)
+            self.instructions[0x1000 | nnn] = lambda: self.JP  (nnn)
             self.instructions[0x2000 | nnn] = lambda: self.CALL(nnn)
+            self.instructions[0xA000 | nnn] = lambda: self.LD(I,nnn)
+            self.instructions[0xB000 | nnn] = lambda: self.JP  (nnn + self.V[0].get())
         for x in range(16):
             vx = self.V[x]
             x00 = x << 2
-            mask_se_vx_kk  = 0x3000 | x00
-            mask_sne_vx_kk = 0x4000 | x00
-            mask_se_vx_vy  = 0x5000 | x00
-            mask_ld_vx_kk  = 0x6000 | x00
-            mask_add_vx_kk = 0x7000 | x00
-            mask_ld_vx_vy  = 0x8000 | x00
-            mask_or_vx_vy  = 0x8001 | x00
-            mask_and_vx_vy = 0x8002 | x00
-            mask_xor_vx_vy = 0x8003 | x00
-            mask_add_vx_vy = 0x8004 | x00
-            mask_sub_vx_vy = 0x8005 | x00
+            mask_se_vx_kk    = 0x3000 | x00
+            mask_sne_vx_kk   = 0x4000 | x00
+            mask_se_vx_vy    = 0x5000 | x00
+            mask_ld_vx_kk    = 0x6000 | x00
+            mask_add_vx_kk   = 0x7000 | x00
+            mask_ld_vx_vy    = 0x8000 | x00
+            mask_or_vx_vy    = 0x8001 | x00
+            mask_and_vx_vy   = 0x8002 | x00
+            mask_xor_vx_vy   = 0x8003 | x00
+            mask_add_vx_vy   = 0x8004 | x00
+            mask_sub_vx_vy   = 0x8005 | x00
+            mask_shr_vx_vy   = 0x8006 | x00
+            mask_subn_vx_vy  = 0x8007 | x00
+            mask_shl_vx_vy   = 0x800E | x00
+            mask_sne_vx_vy   = 0x9000 | x00
+            mask_rnd_vx_kk   = 0xC000 | x00
+            mask_drw_vx_vy_n = 0xD000 | x00
+            self.instructions[0xE09E | x00] = lambda: self.SKP (vx)
+            self.instructions[0xE0A1 | x00] = lambda: self.SKNP(vx)
             for kk in range(0x00, 0x100):
                 self.instructions[mask_se_vx_kk  | kk] = lambda: self.SE (vx, kk)
                 self.instructions[mask_sne_vx_kk | kk] = lambda: self.SNE(vx, kk)
                 self.instructions[mask_ld_vx_kk  | kk] = lambda: self.LD (vx, kk)
                 self.instructions[mask_add_vx_kk | kk] = lambda: self.ADD(vx, kk)
+                self.instructions[mask_rnd_vx_kk | kk] = lambda: self.RND(vx, kk)
             for y in range(16):
                 vy = self.V[y]
                 y0 = y << 1
-                self.instructions[mask_se_vx_vy  | y0] = lambda: self.SE (vx, vy.get())
-                self.instructions[mask_ld_vx_vy  | y0] = lambda: self.LD (vx, vy.get())
-                self.instructions[mask_or_vx_vy  | y0] = lambda: self.OR (vx, vy.get())
-                self.instructions[mask_and_vx_vy | y0] = lambda: self.AND(vx, vy.get())
-                self.instructions[mask_xor_vx_vy | y0] = lambda: self.XOR(vx, vy.get())
-                self.instructions[mask_add_vx_vy | y0] = lambda: self.ADD(vx, vy.get())
-                self.instructions[mask_sub_vx_vy | y0] = lambda: self.SUB(vx, vy.get())
+                mask_drw_vx_vy_n_y0 = mask_drw_vx_vy_n | y0
+                self.instructions[mask_se_vx_vy   | y0] = lambda: self.SE (vx, vy.get())
+                self.instructions[mask_ld_vx_vy   | y0] = lambda: self.LD (vx, vy.get())
+                self.instructions[mask_or_vx_vy   | y0] = lambda: self.OR (vx, vy.get())
+                self.instructions[mask_and_vx_vy  | y0] = lambda: self.AND(vx, vy.get())
+                self.instructions[mask_xor_vx_vy  | y0] = lambda: self.XOR(vx, vy.get())
+                self.instructions[mask_add_vx_vy  | y0] = lambda: self.ADD(vx, vy.get())
+                self.instructions[mask_sub_vx_vy  | y0] = lambda: self.SUB(vx, vy.get())
+                self.instructions[mask_shr_vx_vy  | y0] = lambda: self.SHR(vx)
+                self.instructions[mask_subn_vx_vy | y0] = lambda: self.SUBN(vx, vy.get())
+                self.instructions[mask_shl_vx_vy  | y0] = lambda: self.SHL(vx)
+                self.instructions[mask_sne_vx_vy  | y0] = lambda: self.SNE(vx, vy.get())
+                for n in range(16):
+                    self.instructions[mask_drw_vx_vy_n_y0 | n] = lambda: self.DRW(vx.get(), vy.get())
 
     # 0x00E0 = CLS = Clear Screen
     def CLS(self):
-        self.graphics = [[False]*64]*32
+        self.video = [[False]*64]*32
 
     # 0x00EE = RET = Return from Subroutine
     def RET(self):
         self.SP.add(-1)
         self.PC.set(self.stack[self.SP.get()].get())
 
-    # 0x1NNN = JP = Jump to Address NNN
+    # 0x1NNN = JP NNN = Jump to Address NNN
+    # 0xBNNN = JP V0, NNN = Jump to Address NNN + V0
     def JP(self, address):
         self.PC.set(address)
 
-    # 0x2NNN = CALL = Call Subroutine at Address NNN
+    # 0x2NNN = CALL NNN = Call Subroutine at Address NNN
     def CALL(self, address):
         self.stack[self.SP.get()].set(self.PC.get())
         self.SP.add(1)
@@ -111,25 +130,16 @@ class CHIP8:
             self.PC.add(2)
 
     # 0x4XKK = SNE VX, KK = Skip Next Instruction if VX != KK
+    # 0x9XY0 = SNE VX, VY = Skip Next Instruction if VX != VY
     def SNE(self, register, value):
         if register.get() != value:
             self.PC.add(2)
 
     # 0x6XKK = LD VX, KK = Load KK into VX
     # 0x8XY0 = LD VX, VY = Load VY into VX
+    # 0xANNN = LD I, NNN = Load NNN into I
     def LD(self, register, value):
         register.set(value)
-
-    # 0x7XKK = ADD VX, KK = Increase VX by KK
-    # 0x8XY4 = ADD VX, VY = Increase VX by VY
-    def ADD(self, register, value):
-        orig = register.get()
-        result = (orig + value) & 0xFF
-        if result < orig:
-            self.registers[0xF].set(1)
-        else:
-            self.registers[0xF].set(0)
-        register.set(result)
 
     # 0x8XY1 = OR VX, VY = Set VX to VX | VY
     def OR(self, register, value):
@@ -143,17 +153,75 @@ class CHIP8:
     def XOR(self, register, value):
         register.set(register.get() ^ value)
 
+    # 0x7XKK = ADD VX, KK = Increase VX by KK
+    # 0x8XY4 = ADD VX, VY = Increase VX by VY
+    def ADD(self, register, value):
+        orig = register.get()
+        result = (orig + value) & 0xFF
+        self.registers[0xF].set(result < orig)
+        register.set(result)
+
     # 0x8XY5 = SUB VX, VY = Decrease VX by VY
     def SUB(self, register, value):
         orig = register.get()
-        if orig > value:
-            self.registers[0xF].set(1)
-        else:
-            self.registers[0xF].set(0)
+        self.registers[0xF].set(orig > value)
         result = orig - value
         while result < 0:
             result += 256
         register.set(result)
+
+    # 0x8XY7 = SUBN VX, VY = Set VX to VY - VX
+    def SUBN(self, register, value):
+        orig = register.get()
+        self.registers[0xF].set(value > orig)
+        result = value - orig
+        while result < 0:
+            result += 256
+        register.set(result)
+
+    # 0x8XY6 = SHR VX, VY = Shift VX Right (VY is ignored)
+    def SHR(self, register):
+        orig = register.get()
+        self.registers[0xF].set(orig & 0b1)
+        register.set(orig >> 1)
+
+    # 0x8XYE = SHL VX, VY = Shift VX Left (VY is ignored)
+    def SHL(self, register):
+        orig = register.get()
+        self.registers[0xF].set((orig >> 7) & 0b1)
+        register.set(orig << 7)
+
+    # 0xCXKK = RND VX, KK = Set VX to Random Byte & KK
+    def RND(self, register, value):
+        register.set(randint(0, 255) & value)
+
+    # 0xDXYN = DRW VX, VY, N = Display N-byte Sprite Starting at (VX, VY)
+    def DRW(self, x, y, height):
+        xpos = x % 64
+        ypos = y % 32
+        f_result = False
+        for row in range(height):
+            sprite_byte = self.memory[self.I + row]
+            for col in range(8):
+                sprite_pixel = bool(sprite_byte & (0x80 >> col))
+                screen_pixel = self.video[((ypos + row) * 64) + (xpos + col)]
+                if sprite_pixel:
+                    if screen_pixel:
+                        f_result = True
+                        screen_pixel = False
+                    else:
+                        screen_pixel = True
+        self.registers[0xF].set(f_result)
+
+    # 0xEX9E = SKP VX = Skip Next Instruction if Key VX is Pressed
+    def SKP(self, register):
+        if keypad[register.get()]:
+            self.PC.add(2)
+
+    # 0xEXA1 = SKNP VX = Skip Next Instruction if Key VX is Not Pressed
+    def SKNP(self, register):
+        if not keypad[register.get()]:
+            self.PC.add(2)
 
     # load a game
     def load_game(self, path):
@@ -165,7 +233,7 @@ class CHIP8:
         while True:
             self.emulate_cycle()
             if self.draw_flag:
-                self.draw_graphics()
+                self.draw_video()
             self.set_keys()
 
     # emulate a single cycle
