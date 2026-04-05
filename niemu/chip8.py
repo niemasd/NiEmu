@@ -67,17 +67,17 @@ class CHIP8:
         self.video = [[False]*WIDTH for _ in range(HEIGHT)] # Monochrome Video (64 x 32)
         self.keypad = [False]*16                            # State of Input Keys (True = Pressed)
         self.memory = Memory(0x1000)                        # Memory (4 KB)
-        self.memory[:len(FONT_SET)] = FONT_SET              # Load font set into memory
+        self.memory[0x50 : 0x50 + len(FONT_SET)] = FONT_SET # Load font set into memory
 
         # define instructions
         self.instructions = [None]*0x10000
         self.instructions[0x00E0] = self.CLS
         self.instructions[0x00EE] = self.RET
         for nnn in range(0x000, 0x1000):
-            self.instructions[0x1000 | nnn] = lambda: self.JP  (nnn)
-            self.instructions[0x2000 | nnn] = lambda: self.CALL(nnn)
-            self.instructions[0xA000 | nnn] = lambda: self.LD  (self.I, nnn)
-            self.instructions[0xB000 | nnn] = lambda: self.JP  (nnn + self.V[0].get())
+            self.instructions[0x1000 | nnn] = lambda nnn=nnn: self.JP  (nnn)
+            self.instructions[0x2000 | nnn] = lambda nnn=nnn: self.CALL(nnn)
+            self.instructions[0xA000 | nnn] = lambda nnn=nnn: self.LD  (self.I, nnn)
+            self.instructions[0xB000 | nnn] = lambda nnn=nnn: self.JP  (nnn + self.V[0].get())
         for x in range(16):
             vx = self.V[x]
             x00 = x << 8
@@ -292,7 +292,7 @@ class CHIP8:
 
     # load a game
     def load_game(self, path):
-        data = load_game_data(path)
+        data = load_game_data(path, ext='.ch8')
         self.memory[0x200 : 0x200 + len(data)] = memoryview(data)
 
     # emulate a single cycle
@@ -339,6 +339,8 @@ class CHIP8:
                 for y, row in enumerate(self.video):
                     for x, val in enumerate(row):
                         pxarray[x, y] = COLOR_WHITE if val else COLOR_BLACK
+            pygame.transform.scale(surface, window.get_size(), window)
+            pygame.display.flip()
             clock.tick(FPS)
 
 # run program

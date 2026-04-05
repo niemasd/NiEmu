@@ -1,4 +1,6 @@
 # project files
+*.ch8
+*.ch8.*
 *.gb
 *.gb.*
 *.nes
