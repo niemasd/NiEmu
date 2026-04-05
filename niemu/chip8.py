@@ -56,9 +56,32 @@ class CHIP8:
             self.instructions[0x1000 | nnn] = lambda: self.JP(nnn)
             self.instructions[0x2000 | nnn] = lambda: self.CALL(nnn)
         for x in range(16):
-            upper = 0x3000 | (x << 2)
+            vx = self.V[x]
+            x00 = x << 2
+            mask_se_vx_kk  = 0x3000 | x00
+            mask_sne_vx_kk = 0x4000 | x00
+            mask_se_vx_vy  = 0x5000 | x00
+            mask_ld_vx_kk  = 0x6000 | x00
+            mask_add_vx_kk = 0x7000 | x00
+            mask_ld_vx_vy  = 0x8000 | x00
+            mask_or_vx_vy  = 0x8001 | x00
+            mask_and_vx_vy = 0x8002 | x00
+            mask_xor_vx_vy = 0x8003 | x00
+            mask_add_vx_vy = 0x8004 | x00
             for kk in range(0x00, 0x100):
-                self.instructions[upper | kk] = lambda: self.SE(self.V[x], kk)
+                self.instructions[mask_se_vx_kk  | kk] = lambda: self.SE (vx, kk)
+                self.instructions[mask_sne_vx_kk | kk] = lambda: self.SNE(vx, kk)
+                self.instructions[mask_ld_vx_kk  | kk] = lambda: self.LD (vx, kk)
+                self.instructions[mask_add_vx_kk | kk] = lambda: self.ADD(vx, kk)
+            for y in range(16):
+                vy = self.V[y]
+                y0 = y << 1
+                self.instructions[mask_se_vx_vy  | y0] = lambda: self.SE (vx, vy.get())
+                self.instructions[mask_ld_vx_vy  | y0] = lambda: self.LD (vx, vy.get())
+                self.instructions[mask_or_vx_vy  | y0] = lambda: self.OR (vx, vy.get())
+                self.instructions[mask_and_vx_vy | y0] = lambda: self.AND(vx, vy.get())
+                self.instructions[mask_xor_vx_vy | y0] = lambda: self.XOR(vx, vy.get())
+                self.instructions[mask_add_vx_vy | y0] = lambda: self.ADD(vx, vy.get())
 
     # 0x00E0 = CLS = Clear Screen
     def CLS(self):
@@ -70,19 +93,47 @@ class CHIP8:
         self.PC.set(self.stack[self.SP.get()].get())
 
     # 0x1NNN = JP = Jump to Address NNN
-    def JP(self, nnn):
-        self.PC.set(nnn)
+    def JP(self, address):
+        self.PC.set(address)
 
     # 0x2NNN = CALL = Call Subroutine at Address NNN
-    def CALL(self, nnn):
+    def CALL(self, address):
         self.stack[self.SP.get()].set(self.PC.get())
         self.SP.add(1)
-        self.PC.set(nnn)
+        self.PC.set(address)
 
     # 0x3XKK = SE VX, KK = Skip Next Instruction if VX == KK
-    def SE(self, vx, kk):
-        if vx.get() == kk:
+    # 0x5XY0 = SE VX, VY = Skip Next Instruction if VX == VY
+    def SE(self, register, value):
+        if register.get() == value:
             self.PC.add(2)
+
+    # 0x4XKK = SNE VX, KK = Skip Next Instruction if VX != KK
+    def SNE(self, register, value):
+        if register.get() != value:
+            self.PC.add(2)
+
+    # 0x6XKK = LD VX, KK = Load KK into VX
+    # 0x8XY0 = LD VX, VY = Load VY into VX
+    def LD(self, register, value):
+        register.set(value)
+
+    # 0x7XKK = ADD VX, KK = Increase VX by KK
+    # 0x8XY4 = ADD VX, VY = Increase VX by VY
+    def ADD(self, register, value):
+        register.add(value)
+
+    # 0x8XY1 = OR VX, VY = Set VX to VX | VY
+    def OR(self, register, value):
+        register.set(register.get() | value)
+
+    # 0x8XY2 = AND VX, VY = Set VX to VX & VY
+    def AND(self, register, value):
+        register.set(register.get() & value)
+
+    # 0x8XY3 = XOR VX, VY = Set VX to VX ^ VY
+    def XOR(self, register, value):
+        register.set(register.get() ^ value)
 
     # load a game
     def load_game(self, path):
