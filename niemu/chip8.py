@@ -332,6 +332,9 @@ class CHIP8:
                         break
                     elif event.key in KEY_MAP:
                         self.keypad[KEY_MAP[event.key]] = True
+                elif event.type == pygame.KEYUP:
+                    if event.key in KEY_MAP:
+                        self.keypad[KEY_MAP[event.key]] = False
 
             # update game
             self.cycle()
