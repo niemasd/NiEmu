@@ -8,6 +8,7 @@ https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter
 
 # imports
 from niemu.common import load_game_data, Memory, Register8, Register16
+from random import randint
 
 # constants
 FONT_SET = [
@@ -33,6 +34,7 @@ FONT_SET = [
 class CHIP8:
     # initialize a CHIP8 object
     def __init__(self):
+        # initialize member variables
         self.V  = [Register8(0) for _ in range(16)]     # 8-bit registers
         self.I  = Register16(0)                         # Index Register (I)
         self.PC = Register16(0x200)                     # Program Counter (PC)
@@ -45,6 +47,42 @@ class CHIP8:
         self.draw_flag = False                          # Draw Flag
         self.memory = Memory(0x1000)                    # Memory (4 KB)
         self.memory[:len(FONT_SET)] = FONT_SET          # Load font set into memory
+
+        # define instructions
+        self.instructions = [None]*0x10000
+        self.instructions[0x00E0] = self.CLS
+        self.instructions[0x00EE] = self.RET
+        for nnn in range(0x000, 0x1000):
+            self.instructions[0x1000 | nnn] = lambda: self.JP(nnn)
+            self.instructions[0x2000 | nnn] = lambda: self.CALL(nnn)
+        for x in range(16):
+            upper = 0x3000 | (x << 2)
+            for kk in range(0x00, 0x100):
+                self.instructions[upper | kk] = lambda: self.SE(self.V[x], kk)
+
+    # 0x00E0 = CLS = Clear Screen
+    def CLS(self):
+        self.graphics = [[False]*64]*32
+
+    # 0x00EE = RET = Return from Subroutine
+    def RET(self):
+        self.SP.add(-1)
+        self.PC.set(self.stack[self.SP.get()].get())
+
+    # 0x1NNN = JP = Jump to Address NNN
+    def JP(self, nnn):
+        self.PC.set(nnn)
+
+    # 0x2NNN = CALL = Call Subroutine at Address NNN
+    def CALL(self, nnn):
+        self.stack[self.SP.get()].set(self.PC.get())
+        self.SP.add(1)
+        self.PC.set(nnn)
+
+    # 0x3XKK = SE VX, KK = Skip Next Instruction if VX == KK
+    def SE(self, vx, kk):
+        if vx.get() == kk:
+            self.PC.add(2)
 
     # load a game
     def load_game(self, path):
@@ -63,9 +101,11 @@ class CHIP8:
     def emulate_cycle(self):
         pc_orig = self.PC.get()
         opcode = (self.memory[pc_orig] << 8) | self.memory[pc_orig + 1]
-        match opcode:
-            case _:
-                raise ValueError(f"Unknown opcode: 0x{opcode:02x}")
+        try:
+            instruction = self.instructions[opcode]
+            assert instruction is not None
+        except:
+            raise ValueError(f"Unknown opcode: 0x{opcode:02X}")
 
 # run program
 if __name__ == "__main__":

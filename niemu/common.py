@@ -67,7 +67,7 @@ class Memory:
     def __len__(self):
         return len(self.data)
     def __str__(self):
-        return '\n'.join(' '.join(f'0x{self[i]:02x}' for i in range(row_start, row_start + 0x10)) for row_start in range(0, len(self), 0x10))
+        return '\n'.join(' '.join(f'0x{self[i]:02X}' for i in range(row_start, row_start + 0x10)) for row_start in range(0, len(self), 0x10))
 
 # class to represent a register
 class Register:
