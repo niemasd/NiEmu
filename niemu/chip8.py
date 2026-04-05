@@ -7,7 +7,7 @@ https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter
 '''
 
 # imports
-from niemu.common import COLOR_BLACK, COLOR_WHITE, load_game_data, Memory, Register8, Register16
+from niemu.common import COLOR_BLACK, COLOR_WHITE, generate_tone_sine, load_game_data, Memory, Register8, Register16
 from random import randint
 import pygame
 
@@ -243,7 +243,7 @@ class CHIP8:
     # 0x8XY4 = ADD VX, VY = Increase VX by VY
     def ADD(self, register, value):
         orig = register.get()
-        result = (orig + value) & 0xFF
+        result = (int(orig) + int(value)) & 0xFF
         self.V[0xF].set(result < orig)
         register.set(result)
 
@@ -335,6 +335,13 @@ class CHIP8:
         surface.fill((0, 0, 0))
         clock = pygame.time.Clock()
 
+        # set up sound
+        pygame.mixer.pre_init(frequency=44100, size=-16, channels=1)
+        sound = generate_tone_sine()
+        channel = sound.play(loops=-1) # infinite loop
+        channel.pause()
+        sound_playing = False
+
         # run game
         running = True
         while running:
@@ -346,7 +353,7 @@ class CHIP8:
             pressed = pygame.key.get_pressed()
             self.keypad = [pressed[KEY_MAP[i]] for i in range(16)]
 
-            # update game
+            # update video
             for _ in range(cycles_per_frame):
                 self.cycle()
             with pygame.PixelArray(surface) as pxarray:
@@ -355,6 +362,16 @@ class CHIP8:
                         pxarray[x, y] = COLOR_WHITE if val else COLOR_BLACK
             pygame.transform.scale(surface, window.get_size(), window)
             pygame.display.flip()
+
+            # update audio
+            if self.ST.get() > 0:
+                channel.unpause()
+                sound_playing = True
+            else:
+                channel.pause()
+                sound_playing = False
+
+            # maintain FPS
             clock.tick(FPS)
 
 # run program

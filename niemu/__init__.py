@@ -1,3 +1,3 @@
 #! /usr/bin/env python
-from niemu.chip8 import CHIP8
-__all__ = ['CHIP8']
+from niemu import chip8
+__all__ = ['chip8']

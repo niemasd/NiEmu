@@ -4,8 +4,10 @@ Common variables, classes, functions, etc.
 '''
 
 # imports
-from numpy import uint8, uint16, zeros
+from numpy import column_stack, int16, linspace, sin, uint8, uint16, zeros
+from numpy import pi as PI
 from pathlib import Path
+import pygame
 
 # constants
 ARCHIVE_EXTS = {'.zip'}
@@ -97,3 +99,11 @@ class Register16(Register):
         return '0x%s' % hex(self.get()).zfill(4)
     def set(self, value):
         self.data = uint16(value)
+
+# generate a sine wave tone
+def generate_tone_sine(frequency=440, duration=1.0, sample_rate=44100):
+    t = linspace(0, duration, int(sample_rate * duration), False)
+    wave = 0.5 * sin(2 * PI * frequency * t)
+    audio = (wave * 0x7FFF).astype(int16)
+    stereo_audio = column_stack((audio, audio))
+    return pygame.sndarray.make_sound(stereo_audio)
