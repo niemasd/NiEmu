@@ -50,18 +50,43 @@ class GameBoy:
         self.instructions[0x00] = self.NOP # 0x00 = NOP
 
         # define LD ?, d8 instructions
-        self.instructions[0x06] = lambda: self.LD_d8(self.B) # 0x06 = LD B, d8
-        self.instructions[0x0E] = lambda: self.LD_d8(self.C) # 0x0E = LD C, d8
+        self.instructions[0x06] = lambda: self.LD_X_d8(self.B)     # 0x06 = LD B, d8
+        self.instructions[0x0E] = lambda: self.LD_X_d8(self.C)     # 0x0E = LD C, d8
+        self.instructions[0x16] = lambda: self.LD_X_d8(self.D)     # 0x16 = LD D, d8
+        self.instructions[0x1E] = lambda: self.LD_X_d8(self.E)     # 0x1E = LD E, d8
+        self.instructions[0x26] = lambda: self.LD_X_d8(self.H)     # 0x26 = LD H, d8
+        self.instructions[0x2E] = lambda: self.LD_X_d8(self.L)     # 0x2E = LD L, d8
+        self.instructions[0x3E] = lambda: self.LD_X_d8(self.A)     # 0x3E = LD A, d8
+        self.instructions[0x36] = lambda: self.LD_addr_d8(self.HL) # 0x36 = LD (HL), d8
 
         # define LD ?, d16 instructions
-        self.instructions[0x21] = lambda: self.LD_d16(self.HL) # 0x21 = LD HL, d16
+        self.instructions[0x01] = lambda: self.LD_XX_d16(self.BC) # 0x01 = LD BC, d16
+        self.instructions[0x11] = lambda: self.LD_XX_d16(self.DE) # 0x11 = LD DE, d16
+        self.instructions[0x21] = lambda: self.LD_XX_d16(self.HL) # 0x21 = LD HL, d16
+        self.instructions[0x31] = lambda: self.LD_XX_d16(self.SP) # 0x31 = LD SP, d16
 
         # define LD (?), A instructions
-        self.instructions[0x22] = lambda: self.LD_into_addr(self.A, self.HL,  1) # 0x22 = LD (HL+), A
-        self.instructions[0x32] = lambda: self.LD_into_addr(self.A, self.HL, -1) # 0x32 = LD (HL-), A
+        self.instructions[0x02] = lambda: self.LD_addr_X(self.A, self.BC,  0) # 0x02 = LD (BC), A
+        self.instructions[0x12] = lambda: self.LD_addr_X(self.A, self.DE,  0) # 0x12 = LD (DE), A
+        self.instructions[0x22] = lambda: self.LD_addr_X(self.A, self.HL,  1) # 0x22 = LD (HL+), A
+        self.instructions[0x32] = lambda: self.LD_addr_X(self.A, self.HL, -1) # 0x32 = LD (HL-), A
+        self.instructions[0x70] = lambda: self.LD_addr_X(self.B, self.HL,  0) # 0x70 = LD (HL), B
+        self.instructions[0x71] = lambda: self.LD_addr_X(self.C, self.HL,  0) # 0x71 = LD (HL), C
+        self.instructions[0x72] = lambda: self.LD_addr_X(self.D, self.HL,  0) # 0x72 = LD (HL), D
+        self.instructions[0x73] = lambda: self.LD_addr_X(self.E, self.HL,  0) # 0x73 = LD (HL), E
+        self.instructions[0x74] = lambda: self.LD_addr_X(self.H, self.HL,  0) # 0x74 = LD (HL), H
+        self.instructions[0x75] = lambda: self.LD_addr_X(self.L, self.HL,  0) # 0x75 = LD (HL), L
+        self.instructions[0x77] = lambda: self.LD_addr_X(self.A, self.HL,  0) # 0x77 = LD (HL), A
 
         # define XOR ? instructions
-        self.instructions[0xAF] = lambda: self.XOR(self.A, self.A) # 0xAF = XOR A
+        self.instructions[0xA8] = lambda: self.XOR(self.A, self.B)       # 0xA8 = XOR B
+        self.instructions[0xA9] = lambda: self.XOR(self.A, self.C)       # 0xA9 = XOR C
+        self.instructions[0xAA] = lambda: self.XOR(self.A, self.D)       # 0xAA = XOR D
+        self.instructions[0xAB] = lambda: self.XOR(self.A, self.E)       # 0xAB = XOR E
+        self.instructions[0xAC] = lambda: self.XOR(self.A, self.H)       # 0xAC = XOR H
+        self.instructions[0xAD] = lambda: self.XOR(self.A, self.L)       # 0xAD = XOR L
+        self.instructions[0xAF] = lambda: self.XOR(self.A, self.A)       # 0xAF = XOR A
+        self.instructions[0xAE] = lambda: self.XOR_addr(self.A, self.HL) # 0xAE = XOR (HL)
 
         # define JP instructions
         self.instructions[0xC2] = lambda: self.JP_a16(not self.get_flag_Z()) # 0xC2 = JP NZ, a16
@@ -112,30 +137,33 @@ class GameBoy:
         pc_orig = self.PC.get()
         return uint16(self.memory[pc_orig + 1] | (self.memory[pc_orig + 2] << 8))
 
-    # 0x00 = NOP
+    # 0x00
     def NOP(self):
         return 1, 1
 
-    # 0x06 = LD B, d8
-    # 0x0E = LD C, d8
-    def LD_d8(self, register):
+    # 0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E, 0x3E
+    def LD_X_d8(self, register):
         register.set(self.read_PC_8())
         return 2, 2
 
-    # 0x21 = LD HL, d16
-    def LD_d16(self, register):
+    # 0x36 = LD (HL), d8
+    def LD_addr_d8(self, register_target_address):
+        self.memory[register_target_address.get()] = self.read_PC_8()
+        return 2, 3
+
+    # 0x01, 0x11, 0x21, 0x31
+    def LD_XX_d16(self, register):
         register.set(self.read_PC_16())
         return 3, 3
 
-    # 0x22 = LD (HL+), A
-    # 0x32 = LD (HL-), A
-    def LD_into_addr(self, register_source, register_target_address, register_target_delta=0):
+    # 0x02, 0x12, 0x22, 0x32
+    def LD_addr_X(self, register_source, register_target_address, register_target_delta=0):
         self.memory[register_target_address.get()] = register_source.get()
         if register_target_delta != 0:
             register_target_address.add(register_target_delta)
         return 1, 2
 
-    # 0xAF = XOR A
+    # 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAF
     def XOR(self, register_store, register_other):
         result = register_store.get() ^ register_other.get()
         register_store.set(result)
@@ -148,11 +176,20 @@ class GameBoy:
         self.reset_flag_C()
         return 1, 1
 
-    # 0xC2 = JP NZ, a16
-    # 0xC3 = JP a16
-    # 0xCA = JP Z, a16
-    # 0xD2 = JP NC, a16
-    # 0xDA = JP C, a16
+    # 0xAE
+    def XOR_addr(self, register_store, register_other_address):
+        result = register_store.get() ^ self.memory[register_other_address.get()]
+        register_store.set(result)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        self.reset_flag_H()
+        self.reset_flag_C()
+        return 1, 2
+
+    # 0xC2, 0xC3, 0xCA, 0xD2, 0xDA
     def JP_a16(self, condition):
         if condition:
             self.PC.set(self.read_PC_16())
@@ -160,7 +197,7 @@ class GameBoy:
         else:
             return 3, 3
 
-    # 0xE9 = JP HL
+    # 0xE9
     def JP_HL(self):
         self.PC.set(self.HL.get())
         return 0, 1 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
