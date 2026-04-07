@@ -45,6 +45,7 @@ class GameBoy:
         # define instructions
         self.instructions = [None]*0x100
         self.instructions[0xCB] = [None]*0x100
+        self.instructions[0x00] = lambda: (1, 1) # NOP
 
     # load a game
     def load_game(self, path):
@@ -76,6 +77,25 @@ class GameBoy:
                     break
             pressed = pygame.key.get_pressed()
             pass # TODO PARSE PRESSED KEYS
+
+            # run 17,556 M-cycles
+            m_cycles_remaining = 17556
+            while m_cycles_remaining > 0:
+                pc_orig = self.PC.get()
+                opcode = self.memory[pc_orig]
+                if opcode == 0xCB:
+                    cb_opcode = self.memory[pc_orig + 1]
+                    try:
+                        num_bytes, num_cycles = self.instructions[0xCB][cb_opcode]()
+                    except:
+                        raise ValueError(f"Unknown opcode: 0xCB{cb_opcode:02X}")
+                else:
+                    try:
+                        num_bytes, num_m_cycles = self.instructions[opcode]()
+                    except:
+                        raise ValueError(f"Unknown opcode: 0x{opcode:02X}")
+                self.PC.add(num_bytes)
+                m_cycles_remaining -= num_m_cycles
 
             # update video
             pass # TODO
