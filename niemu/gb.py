@@ -9,7 +9,7 @@ https://rgbds.gbdev.io/docs/v1.0.1/gbz80.7
 
 # imports
 from niemu.common import load_game_data, Memory, Register8, Register8Pair, Register16
-from numpy import uint8, uint16
+from numpy import uint16
 import pygame
 
 # constants
@@ -49,23 +49,13 @@ class GameBoy:
         # define special instructions
         self.instructions[0x00] = self.NOP # 0x00 = NOP
 
-        # define LD ?, d8 instructions
-        self.instructions[0x06] = lambda: self.LD_X_d8(self.B)     # 0x06 = LD B, d8
-        self.instructions[0x0E] = lambda: self.LD_X_d8(self.C)     # 0x0E = LD C, d8
-        self.instructions[0x16] = lambda: self.LD_X_d8(self.D)     # 0x16 = LD D, d8
-        self.instructions[0x1E] = lambda: self.LD_X_d8(self.E)     # 0x1E = LD E, d8
-        self.instructions[0x26] = lambda: self.LD_X_d8(self.H)     # 0x26 = LD H, d8
-        self.instructions[0x2E] = lambda: self.LD_X_d8(self.L)     # 0x2E = LD L, d8
-        self.instructions[0x3E] = lambda: self.LD_X_d8(self.A)     # 0x3E = LD A, d8
-        self.instructions[0x36] = lambda: self.LD_addr_d8(self.HL) # 0x36 = LD (HL), d8
-
-        # define LD ?, d16 instructions
+        # define LD ??, d16 instructions
         self.instructions[0x01] = lambda: self.LD_XX_d16(self.BC) # 0x01 = LD BC, d16
         self.instructions[0x11] = lambda: self.LD_XX_d16(self.DE) # 0x11 = LD DE, d16
         self.instructions[0x21] = lambda: self.LD_XX_d16(self.HL) # 0x21 = LD HL, d16
         self.instructions[0x31] = lambda: self.LD_XX_d16(self.SP) # 0x31 = LD SP, d16
 
-        # define LD (?), A instructions
+        # define LD (??), ? instructions
         self.instructions[0x02] = lambda: self.LD_addr_X(self.A, self.BC,  0) # 0x02 = LD (BC), A
         self.instructions[0x12] = lambda: self.LD_addr_X(self.A, self.DE,  0) # 0x12 = LD (DE), A
         self.instructions[0x22] = lambda: self.LD_addr_X(self.A, self.HL,  1) # 0x22 = LD (HL+), A
@@ -77,6 +67,42 @@ class GameBoy:
         self.instructions[0x74] = lambda: self.LD_addr_X(self.H, self.HL,  0) # 0x74 = LD (HL), H
         self.instructions[0x75] = lambda: self.LD_addr_X(self.L, self.HL,  0) # 0x75 = LD (HL), L
         self.instructions[0x77] = lambda: self.LD_addr_X(self.A, self.HL,  0) # 0x77 = LD (HL), A
+
+        # define INC ?? instructions
+        self.instructions[0x03] = lambda: self.INC_XX(self.BC) # 0x03 = INC BC
+        self.instructions[0x13] = lambda: self.INC_XX(self.DE) # 0x13 = INC DE
+        self.instructions[0x23] = lambda: self.INC_XX(self.HL) # 0x23 = INC HL
+        self.instructions[0x33] = lambda: self.INC_XX(self.SP) # 0x33 = INC SP
+
+        # define INC ? instructions
+        self.instructions[0x04] = lambda: self.INC_X(self.B)     # 0x04 = INC B
+        self.instructions[0x0C] = lambda: self.INC_X(self.C)     # 0x0C = INC C
+        self.instructions[0x14] = lambda: self.INC_X(self.D)     # 0x14 = INC D
+        self.instructions[0x1C] = lambda: self.INC_X(self.E)     # 0x1C = INC E
+        self.instructions[0x24] = lambda: self.INC_X(self.H)     # 0x24 = INC H
+        self.instructions[0x2C] = lambda: self.INC_X(self.L)     # 0x2C = INC L
+        self.instructions[0x3C] = lambda: self.INC_X(self.A)     # 0x3C = INC A
+        self.instructions[0x34] = lambda: self.INC_addr(self.HL) # 0x34 = INC (HL)
+
+        # define DEC ? instructions
+        self.instructions[0x05] = lambda: self.DEC_X(self.B)     # 0x05 = DEC B
+        self.instructions[0x0D] = lambda: self.DEC_X(self.C)     # 0x0D = DEC C
+        self.instructions[0x15] = lambda: self.DEC_X(self.D)     # 0x15 = DEC D
+        self.instructions[0x1D] = lambda: self.DEC_X(self.E)     # 0x1D = DEC E
+        self.instructions[0x25] = lambda: self.DEC_X(self.H)     # 0x25 = DEC H
+        self.instructions[0x2D] = lambda: self.DEC_X(self.L)     # 0x2D = DEC L
+        self.instructions[0x3D] = lambda: self.DEC_X(self.A)     # 0x3D = DEC A
+        self.instructions[0x35] = lambda: self.DEC_addr(self.HL) # 0x35 = DEC (HL)
+
+        # define LD ?, d8 instructions
+        self.instructions[0x06] = lambda: self.LD_X_d8(self.B)     # 0x06 = LD B, d8
+        self.instructions[0x0E] = lambda: self.LD_X_d8(self.C)     # 0x0E = LD C, d8
+        self.instructions[0x16] = lambda: self.LD_X_d8(self.D)     # 0x16 = LD D, d8
+        self.instructions[0x1E] = lambda: self.LD_X_d8(self.E)     # 0x1E = LD E, d8
+        self.instructions[0x26] = lambda: self.LD_X_d8(self.H)     # 0x26 = LD H, d8
+        self.instructions[0x2E] = lambda: self.LD_X_d8(self.L)     # 0x2E = LD L, d8
+        self.instructions[0x3E] = lambda: self.LD_X_d8(self.A)     # 0x3E = LD A, d8
+        self.instructions[0x36] = lambda: self.LD_addr_d8(self.HL) # 0x36 = LD (HL), d8
 
         # define XOR ? instructions
         self.instructions[0xA8] = lambda: self.XOR(self.A, self.B)       # 0xA8 = XOR B
@@ -162,6 +188,73 @@ class GameBoy:
         if register_target_delta != 0:
             register_target_address.add(register_target_delta)
         return 1, 2
+
+    # 0x03, 0x13, 0x23, 0x33
+    def INC_XX(self, register):
+        register.add(1)
+        return 1, 2
+
+    # 0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x3C
+    def INC_X(self, register):
+        result = (register.get() + 1) & 0xFF
+        register.set(result)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        if (result & 0x0F) == 0:
+            self.set_flag_H()
+        else:
+            self.reset_flag_H()
+        return 1, 1
+
+    # 0x34
+    def INC_addr(self, register_address):
+        address = register_address.get()
+        result = (self.memory[address] + 1) & 0xFF
+        self.memory[address] = result
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        if (result & 0x0F) == 0:
+            self.set_flag_H()
+        else:
+            self.reset_flag_H()
+        return 1, 3
+
+    # 0x05, 0x0D, 0x15, 0x1D, 0x25, 0x2D, 0x3D
+    def DEC_X(self, register):
+        result = (register.get() + 255) & 0xFF # (X + 255) & 0xFF == (X - 1) & 0xFF
+        register.set(result)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.set_flag_N()
+        if (result & 0x0F) == 0x0F:
+            self.set_flag_H()
+        else:
+            self.reset_flag_H()
+        return 1, 1
+
+    # 0x35
+    def DEC_addr(self, register_address):
+        address = register_address.get()
+        result = (self.memory[address] + 255) & 0xFF # (X + 255) & 0xFF == (X - 1) & 0xFF
+        self.memory[address] = result
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.set_flag_N()
+        if (result & 0x0F) == 0x0F:
+            self.set_flag_H()
+        else:
+            self.reset_flag_H()
+        return 1, 3
 
     # 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAF
     def XOR(self, register_store, register_other):
