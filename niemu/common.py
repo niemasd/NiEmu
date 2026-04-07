@@ -68,7 +68,7 @@ class Register:
     def __init__(self, value=0):
         self.set(value)
     def __str__(self):
-        return '0x%s' % hex(self.get())
+        return str(hex(self.get()))
     def set(self, value):
         self.data = value
     def get(self):
@@ -85,14 +85,14 @@ class Register:
 # class to represent an 8-bit register
 class Register8(Register):
     def __str__(self):
-        return '0x%s' % hex(self.get()).zfill(2)
+        return f'0x{int(self.get()):02X}'
     def set(self, value):
         self.data = uint8(value)
 
 # class to represent a 16-bit register
 class Register16(Register):
     def __str__(self):
-        return '0x%s' % hex(self.get()).zfill(4)
+        return f'0x{int(self.get()):04X}'
     def set(self, value):
         self.data = uint16(value)
 
