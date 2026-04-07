@@ -7,6 +7,7 @@ Common variables, classes, functions, etc.
 from numpy import column_stack, int16, linspace, sin, uint8, uint16, zeros
 from numpy import pi as PI
 from pathlib import Path
+from zipfile import ZipFile
 import pygame
 
 # constants
@@ -99,6 +100,17 @@ class Register16(Register):
         return '0x%s' % hex(self.get()).zfill(4)
     def set(self, value):
         self.data = uint16(value)
+
+# class to represent a 16-bit register consisting of 2 8-bit registers
+class Register8Pair(Register16):
+    def __init__(self, register_high, register_low, value=0):
+        self.high = register_high
+        self.low = register_low
+    def get(self):
+        return uint16(((self.high.get() << 8) | self.low) & 0xFFFF)
+    def set(self, value):
+        self.high.set((value >> 8) & 0xFF)
+        self.low.set(value & 0xFF)
 
 # generate a sine wave tone
 def generate_tone_sine(frequency=440, duration=1.0, sample_rate=44100):
