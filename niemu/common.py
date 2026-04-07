@@ -98,7 +98,7 @@ class Register16(Register):
 
 # class to represent a 16-bit register consisting of 2 8-bit registers
 class Register8Pair(Register16):
-    def __init__(self, register_high, register_low, value=0):
+    def __init__(self, register_high, register_low):
         self.high = register_high
         self.low = register_low
     def get(self):
