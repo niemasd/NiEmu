@@ -9,7 +9,7 @@ https://rgbds.gbdev.io/docs/v1.0.1/gbz80.7
 
 # imports
 from niemu.common import load_game_data, Memory, Register8, Register8Pair, Register16
-from numpy import uint16
+from numpy import int8, uint16
 import pygame
 
 # constants
@@ -103,6 +103,13 @@ class GameBoy:
         self.instructions[0x2E] = lambda: self.LD_X_d8(self.L)     # 0x2E = LD L, d8
         self.instructions[0x3E] = lambda: self.LD_X_d8(self.A)     # 0x3E = LD A, d8
         self.instructions[0x36] = lambda: self.LD_addr_d8(self.HL) # 0x36 = LD (HL), d8
+
+        # define JR instructions
+        self.instructions[0x18] = lambda: self.JR_s8(True)                  # 0x18 = JR s8
+        self.instructions[0x20] = lambda: self.JR_s8(not self.get_flag_Z()) # 0x20 = JR NZ, s8
+        self.instructions[0x28] = lambda: self.JR_s8(self.get_flag_Z())     # 0x28 = JR Z, s8
+        self.instructions[0x30] = lambda: self.JR_s8(not self.get_flag_C()) # 0x30 = JR NC, s8
+        self.instructions[0x38] = lambda: self.JR_s8(self.get_flag_C())     # 0x38 = JR C, s8
 
         # define XOR ? instructions
         self.instructions[0xA8] = lambda: self.XOR(self.A, self.B)       # 0xA8 = XOR B
@@ -282,6 +289,14 @@ class GameBoy:
         self.reset_flag_C()
         return 1, 2
 
+    # 0x18, 0x20, 0x28, 0x30, 0x38
+    def JR_s8(self, condition):
+        if condition:
+            self.PC.add(int8(self.read_PC_8()))
+            return 0, 3 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
+        else:
+            return 2, 2
+
     # 0xC2, 0xC3, 0xCA, 0xD2, 0xDA
     def JP_a16(self, condition):
         if condition:
@@ -331,6 +346,7 @@ class GameBoy:
             while m_cycles_remaining > 0:
                 pc_orig = self.PC.get()
                 opcode = self.memory[pc_orig]
+                print(m_cycles_remaining, hex(opcode)) # TODO
                 if opcode == 0xCB:
                     cb_opcode = self.memory[pc_orig + 1]
                     try:
