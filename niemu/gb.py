@@ -327,7 +327,7 @@ class GameBoy:
     def run(self):
         # set up pygame
         pygame.init()
-        pygame.display.set_caption(self.cartridge[0x0134 : 0x0144].rstrip(b'\x00').decode().strip())
+        pygame.display.set_caption(self.cartridge[0x0134 : 0x0144].rstrip(b'\x00').decode('ascii', errors='replace').strip())
         window = pygame.display.set_mode((WIDTH*4, HEIGHT*4))
         surface = pygame.Surface((WIDTH, HEIGHT))
         surface.fill((0, 0, 0))
