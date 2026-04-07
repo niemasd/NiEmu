@@ -4,10 +4,12 @@ Nintendo Game Boy Emulator
 
 https://gbdev.io/pandocs
 https://meganesu.github.io/generate-gb-opcodes
+https://rgbds.gbdev.io/docs/v1.0.1/gbz80.7
 '''
 
 # imports
 from niemu.common import load_game_data, Memory, Register8, Register8Pair, Register16
+from numpy import uint8, uint16
 import pygame
 
 # constants
@@ -41,11 +43,74 @@ class GameBoy:
         # memory and other key variables
         self.memory = Memory(0x10000)
         self.cartridge = None
-
-        # define instructions
         self.instructions = [None]*0x100
         self.instructions[0xCB] = [None]*0x100
-        self.instructions[0x00] = lambda: (1, 1) # NOP
+
+        # define instructions
+        self.instructions[0x00] = self.NOP                         # 0x00 = NOP
+        self.instructions[0xAF] = lambda: self.XOR(self.A, self.A) # 0xAF = XOR A
+        self.instructions[0xC3] = self.JP_a16                      # 0xC3 = JP a16
+
+    # get flags
+    def get_flag_Z(self): # Zero
+        return self.F.get_bit(7)
+    def get_flag_N(self): # Subtract
+        return self.F.get_bit(6)
+    def get_flag_H(self): # Half-Carry
+        return self.F.get_bit(5)
+    def get_flag_C(self): # Carry
+        return self.F.get_bit(4)
+
+    # set flags to 1
+    def set_flag_Z(self): # Zero
+        self.F.set_bit(7)
+    def set_flag_N(self): # Subtract
+        self.F.set_bit(6)
+    def set_flag_H(self): # Half-Carry
+        self.F.set_bit(5)
+    def set_flag_C(self): # Carry
+        self.F.set_bit(4)
+
+    # reset flags to 0
+    def reset_flag_Z(self): # Zero
+        self.F.reset_bit(7)
+    def reset_flag_N(self): # Subtract
+        self.F.reset_bit(6)
+    def reset_flag_H(self): # Half-Carry
+        self.F.reset_bit(5)
+    def reset_flag_C(self): # Carry
+        self.F.reset_bit(4)
+
+    # read 8 bits (1 byte) after the PC
+    def read_PC_8(self):
+        return self.memory[self.PC.get() + 1]
+
+    # read 16 bits (2 bytes) after the PC
+    def read_PC_16(self):
+        pc_orig = self.PC.get()
+        return uint16(self.memory[pc_orig + 1] | (self.memory[pc_orig + 2] << 8))
+
+    # 0x00 = NOP
+    def NOP(self):
+        return 1, 1
+
+    # 0xAF = XOR A
+    def XOR(self, register_store, register_other):
+        result = register_store.get() ^ register_other.get()
+        register_store.set(result)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        self.reset_flag_H()
+        self.reset_flag_C()
+        return 1, 1
+
+    # 0xC3 = JP a16
+    def JP_a16(self):
+        self.PC.set(self.read_PC_16())
+        return 0, 4 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
 
     # load a game
     def load_game(self, path):

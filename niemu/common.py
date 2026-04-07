@@ -49,18 +49,6 @@ def load_game_data(path, ext=None):
         with open_file(path, mode='rb') as f:
             return f.read()
 
-# return the n-th bit of a bool (0 = False, 1 = True)
-def get_bit(bit_num, value):
-    return bool((value >> bit_num) & 0b1)
-
-# return the result of resetting the n-th bit of an integer to 0
-def reset_bit(bit_num, value):
-    return uint8(value & ~(0b1 << bit_num))
-
-# return the result of setting the n-th bit of an integer to 1
-def set_bit(bit_num, value):
-    return uint8(value | (0b1 << bit_num))
-
 # class to represent memory
 class Memory:
     def __init__(self, size):
@@ -84,6 +72,12 @@ class Register:
         self.data = value
     def get(self):
         return self.data
+    def get_bit(self, bit_num):
+        return bool((self.get() >> bit_num) & 1)
+    def reset_bit(self, bit_num):
+        self.set(self.get() & ~(1 << bit_num))
+    def set_bit(self, bit_num):
+        self.set(self.get() | (1 << bit_num))
     def add(self, value): # negate value to subtract
         self.set(self.get() + value)
 
