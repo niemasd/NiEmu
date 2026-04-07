@@ -292,7 +292,7 @@ class GameBoy:
     # 0x18, 0x20, 0x28, 0x30, 0x38
     def JR_s8(self, condition):
         if condition:
-            self.PC.add(int8(self.read_PC_8()))
+            self.PC.add(2 + int8(self.read_PC_8()))
             return 0, 3 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
             return 2, 2
