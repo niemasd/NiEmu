@@ -26,6 +26,11 @@ class RegisterF(Register8):
 class GameBoy:
     # initialize a GameBoy object
     def __init__(self):
+        # CPU flags
+        self.interrupt_master_enable = False
+        self.is_halted = False
+        self.is_stopped = True
+
         # 8-bit registers
         self.A = Register8(0x01)
         self.F = RegisterF(0xB0)
@@ -51,7 +56,13 @@ class GameBoy:
         self.instructions[0xCB] = [None]*0x100
 
         # define special instructions
-        self.instructions[0x00] = self.NOP # 0x00 = NOP
+        self.instructions[0x00] = self.NOP                    # 0x00 = NOP
+        self.instructions[0x10] = self.STOP                   # 0x10 = STOP
+        self.instructions[0x37] = self.SCF                    # 0x37 = SCF
+        self.instructions[0x3F] = self.CCF                    # 0x3F = CCF
+        self.instructions[0x76] = self.HALT                   # 0x76 = HALT
+        self.instructions[0xF3] = lambda: self.set_IME(False) # 0xF3 = DI
+        self.instructions[0xFB] = lambda: self.set_IME(True)  # 0xFB = EI
 
         # define LD ??, d16 instructions
         self.instructions[0x01] = lambda: self.LD_XX_d16(self.BC) # 0x01 = LD BC, d16
@@ -177,6 +188,38 @@ class GameBoy:
 
     # 0x00
     def NOP(self):
+        return 1, 1
+
+    # 0x10
+    def STOP(self):
+        self.is_stopped = True
+        return 2, 1
+
+    # 0x37
+    def SCF(self):
+        self.reset_flag_N()
+        self.reset_flag_H()
+        self.set_flag_C()
+        return 1, 1
+
+    # 0x3F
+    def CCF(self):
+        self.reset_flag_N()
+        self.reset_flag_H()
+        if self.get_flag_C():
+            self.reset_flag_C()
+        else:
+            self.set_flag_C()
+        return 1, 1
+
+    # 0x76
+    def HALT(self):
+        self.is_halted = True
+        return 1, 1
+
+    # 0xF3, 0xFB
+    def set_IME(self, value):
+        self.interrupt_master_enable = value
         return 1, 1
 
     # 0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E, 0x3E
