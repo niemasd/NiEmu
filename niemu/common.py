@@ -87,14 +87,14 @@ class Register8(Register):
     def __str__(self):
         return f'0x{int(self.get()):02X}'
     def set(self, value):
-        self.data = uint8(value)
+        self.data = uint8(value & 0xFF)
 
 # class to represent a 16-bit register
 class Register16(Register):
     def __str__(self):
         return f'0x{int(self.get()):04X}'
     def set(self, value):
-        self.data = uint16(value)
+        self.data = uint16(value & 0xFFFF)
 
 # class to represent a 16-bit register consisting of 2 8-bit registers
 class Register8Pair(Register16):
