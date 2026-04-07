@@ -4,6 +4,7 @@ Common variables, classes, functions, etc.
 '''
 
 # imports
+from gzip import open as gopen
 from numpy import column_stack, int16, linspace, sin, uint8, uint16, zeros
 from numpy import pi as PI
 from pathlib import Path
