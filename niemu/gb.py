@@ -29,7 +29,7 @@ class GameBoy:
     def __init__(self):
         # 8-bit registers
         self.A = Register8(0x01)
-        self.F = Register8(0xB0)
+        self.F = RegisterF(0xB0)
         self.B = Register8(0x00)
         self.C = Register8(0x13)
         self.D = Register8(0x00)
@@ -132,6 +132,7 @@ class GameBoy:
         self.instructions[0xCA] = lambda: self.JP_a16(self.get_flag_Z())     # 0xCA = JP Z, a16
         self.instructions[0xD2] = lambda: self.JP_a16(not self.get_flag_C()) # 0xD2 = JP NC, a16
         self.instructions[0xDA] = lambda: self.JP_a16(self.get_flag_C())     # 0xDA = JP C, a16
+        self.instructions[0xE9] = lambda: self.JP_HL                         # 0xE9 = JP HL
 
         # define 0xCB?? instructions
         pass # TODO
