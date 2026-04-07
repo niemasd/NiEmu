@@ -312,7 +312,7 @@ class CHIP8:
         pygame.init()
         window = pygame.display.set_mode((WIDTH*15, HEIGHT*15))
         surface = pygame.Surface((WIDTH, HEIGHT))
-        surface.fill((0, 0, 0))
+        surface.fill(COLOR_BLACK)
         clock = pygame.time.Clock()
 
         # set up sound
