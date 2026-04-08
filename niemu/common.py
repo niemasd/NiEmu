@@ -13,8 +13,10 @@ import pygame
 
 # constants
 ARCHIVE_EXTS = {'.zip'}
-COLOR_BLACK = (  0,   0,   0)
-COLOR_WHITE = (255, 255, 255)
+COLOR_BLACK      = (  0,   0,   0)
+COLOR_GRAY_DARK  = ( 96,  96,  96)
+COLOR_GRAY_LIGHT = (192, 192, 192)
+COLOR_WHITE      = (255, 255, 255)
 
 # open a file for reading/writing
 def open_file(path, mode='rb'):

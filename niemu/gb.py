@@ -8,7 +8,7 @@ https://rgbds.gbdev.io/docs/v1.0.1/gbz80.7
 '''
 
 # imports
-from niemu.common import load_game_data, Memory, Register8, Register8Pair, Register16
+from niemu.common import COLOR_BLACK, COLOR_GRAY_DARK, COLOR_GRAY_LIGHT, COLOR_WHITE, load_game_data, Memory, Register8, Register8Pair, Register16
 from numpy import int8, uint16
 import pygame
 
@@ -16,6 +16,86 @@ import pygame
 WIDTH = 160
 HEIGHT = 144
 FPS = 59.73
+COLOR_PALETTE = [COLOR_WHITE, COLOR_GRAY_LIGHT, COLOR_GRAY_DARK, COLOR_BLACK]
+
+# class to represent Game Boy PPU
+class PPU:
+    # initialize a PPU object
+    def __init__(self, memory):
+        self.memory = memory
+        self.memory[0xFF40] = 0x91  # LCDC: LCD on, BG on, tile data 0x8000, BG map 0x9800
+        self.memory[0xFF42] = 0x00  # SCY
+        self.memory[0xFF43] = 0x00  # SCX
+        self.memory[0xFF44] = 0x00  # LY
+        self.memory[0xFF47] = 0xE4  # BGP
+
+    # register helpers
+    def lcd_enabled(self):
+        return bool(self.memory[0xFF40] & 0x80)
+    def bg_enabled(self):
+        return bool(self.memory[0xFF40] & 0x01)
+
+    # convert til color ID (0, 1, 2, or 3) into RGB tuple
+    def get_bg_palette_color(self, color_id):
+        bgp = int(self.memory[0xFF47])
+        shade = (bgp >> (color_id * 2)) & 0b11
+        return COLOR_PALETTE[shade]
+
+    # read one pixel from a tile
+    def get_tile_pixel(self, tile_addr, x, y):
+        bit = 7 - x
+        row_addr = tile_addr + (y * 2)
+        low = int(self.memory[row_addr])
+        high = int(self.memory[row_addr + 1])
+        lo_bit = (low >> bit) & 1
+        hi_bit = (high >> bit) & 1
+        return (hi_bit << 1) | lo_bit
+
+    # resolve background tile number to tile data address
+    def get_bg_tile_addr(self, tile_number):
+        lcdc = int(self.memory[0xFF40])
+        if lcdc & 0x10:
+            return 0x8000 + (tile_number * 16)
+        else:
+            signed_tile_number = int(int8(tile_number))
+            return 0x9000 + (signed_tile_number * 16)
+
+    # render scrolling background layer
+    def render_background(self, surface):
+        # set things up
+        if not self.lcd_enabled():
+            surface.fill(COLOR_WHITE)
+            return
+        if not self.bg_enabled():
+            surface.fill(COLOR_WHITE)
+            return
+        lcdc = int(self.memory[0xFF40])
+        scy = int(self.memory[0xFF42])
+        scx = int(self.memory[0xFF43])
+
+        # LCDC bit 3 selects background tile map
+        bg_map_base = 0x9C00 if (lcdc & 0x08) else 0x9800
+        for screen_y in range(HEIGHT):
+            world_y = (screen_y + scy) & 0xFF
+            tile_y = world_y // 8
+            pixel_y = world_y % 8
+            for screen_x in range(WIDTH):
+                world_x = (screen_x + scx) & 0xFF
+                tile_x = world_x // 8
+                pixel_x = world_x % 8
+                tile_map_index = tile_y * 32 + tile_x
+                tile_number = int(self.memory[bg_map_base + tile_map_index])
+                tile_addr = self.get_bg_tile_addr(tile_number)
+                color_id = self.get_tile_pixel(tile_addr, pixel_x, pixel_y)
+                surface.set_at((screen_x, screen_y), self.get_bg_palette_color(color_id))
+
+    # render frame (just background for now)
+    def render_frame(self, surface):
+        self.render_background(surface)
+
+    # placeholder for future timing-based PPU (right now just keep LY sane)
+    def step(self, m_cycles):
+        self.memory[0xFF44] = 0
 
 # class to represent F register
 class RegisterF(Register8):
@@ -49,8 +129,9 @@ class GameBoy:
         self.DE = Register8Pair(self.D, self.E)
         self.HL = Register8Pair(self.H, self.L)
 
-        # memory and other key variables
+        # memory, PPU, and other key variables
         self.memory = Memory(0x10000)
+        self.ppu = PPU(self.memory)
         self.cartridge = None
         self.instructions = [None]*0x100
         self.instructions[0xCB] = [None]*0x100
@@ -407,10 +488,11 @@ class GameBoy:
                     except:
                         raise ValueError(f"Unknown opcode: 0x{opcode:02X}")
                 self.PC.add(num_bytes)
+                self.ppu.step(num_m_cycles)
                 m_cycles_remaining -= num_m_cycles
 
             # update video
-            pass # TODO
+            self.ppu.render_frame(surface)
             pygame.transform.scale(surface, window.get_size(), window)
             pygame.display.flip()
 
