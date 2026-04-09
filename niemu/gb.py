@@ -285,13 +285,13 @@ class GameBoy:
 
         # define CP ? instructions
         self.instructions[0xB8] = lambda: self.SUB_X_X(self.A, self.B, store=False)             # 0xB8 = CP B
-        self.instructions[0xB9] = lambda: self.SUB_X_X(self.A, self.C, store=False)             # 0xB9 = CB C
-        self.instructions[0xBA] = lambda: self.SUB_X_X(self.A, self.D, store=False)             # 0xBA = CB D
-        self.instructions[0xBB] = lambda: self.SUB_X_X(self.A, self.E, store=False)             # 0xBB = CB E
-        self.instructions[0xBC] = lambda: self.SUB_X_X(self.A, self.H, store=False)             # 0xBC = CB H
-        self.instructions[0xBD] = lambda: self.SUB_X_X(self.A, self.L, store=False)             # 0xBD = CB L
-        self.instructions[0xBF] = lambda: self.SUB_X_X(self.A, self.A, store=False)             # 0xBF = CB A
-        self.instructions[0xBE] = lambda: self.SUB_X_X(self.A, self.HL, store=False, addr=True) # 0xBE = CB (HL)
+        self.instructions[0xB9] = lambda: self.SUB_X_X(self.A, self.C, store=False)             # 0xB9 = CP C
+        self.instructions[0xBA] = lambda: self.SUB_X_X(self.A, self.D, store=False)             # 0xBA = CP D
+        self.instructions[0xBB] = lambda: self.SUB_X_X(self.A, self.E, store=False)             # 0xBB = CP E
+        self.instructions[0xBC] = lambda: self.SUB_X_X(self.A, self.H, store=False)             # 0xBC = CP H
+        self.instructions[0xBD] = lambda: self.SUB_X_X(self.A, self.L, store=False)             # 0xBD = CP L
+        self.instructions[0xBF] = lambda: self.SUB_X_X(self.A, self.A, store=False)             # 0xBF = CP A
+        self.instructions[0xBE] = lambda: self.SUB_X_X(self.A, self.HL, store=False, addr=True) # 0xBE = CP (HL)
 
         # define JP instructions
         self.instructions[0xC2] = lambda: self.JP_a16(not self.get_flag_Z()) # 0xC2 = JP NZ, a16
@@ -415,7 +415,7 @@ class GameBoy:
         register.set(self.memory[0xFF00 | self.read_PC_8()])
         return 2, 3
 
-    # 0xFF
+    # 0xFA
     def LD_X_a16(self, register):
         register.set(self.memory[self.read_PC_16()])
         return 3, 4
@@ -501,9 +501,9 @@ class GameBoy:
         result = rs_orig + ro_orig
         self.reset_flag_N()
         if ((rs_orig & 0x0FFF) + (ro_orig & 0x0FFF)) > 0x0FFF:
-            self.reset_flag_H()
-        else:
             self.set_flag_H()
+        else:
+            self.reset_flag_H()
         if result > 0xFFFF:
             self.set_flag_C()
         else:
@@ -515,17 +515,18 @@ class GameBoy:
     def ADD_X_X(self, register_store, register_other, addr=False, carry=False):
         rs_orig = register_store.get()
         ro_orig = register_other.get()
+        c_orig = int(self.get_flag_C())
         if addr:
             ro_orig = self.memory[ro_orig]
         result = rs_orig + ro_orig
-        if carry and self.get_flag_C():
-            result += 1
+        if carry:
+            result += c_orig
         if result == 0:
             self.set_flag_Z()
         else:
-            result.reset_flag_Z()
+            self.reset_flag_Z()
         self.reset_flag_N()
-        if ((rs_orig & 0x0F) + (ro_orig & 0x0F)) > 0x0F:
+        if ((rs_orig & 0x0F) + (ro_orig & 0x0F) + c_orig) > 0x0F:
             self.set_flag_H()
         else:
             self.reset_flag_H()
@@ -543,19 +544,20 @@ class GameBoy:
     def SUB_X_X(self, register_store, register_other, store=True, addr=False, carry=False):
         rs_orig = int(register_store.get())
         ro_orig = int(register_other.get())
+        c_orig = int(self.get_flag_C())
         if addr:
-            ro_orig = self.memory[ro_orig]
+            ro_orig = int(self.memory[ro_orig])
         result = rs_orig - ro_orig
-        if carry and self.get_flag_C():
-            result -= 1
+        if carry:
+            result += c_orig
         while result < 0:
-            result += 0xFF
+            result += 0x100
         if result == 0:
             self.set_flag_Z()
         else:
-            result.reset_flag_Z()
+            self.reset_flag_Z()
         self.set_flag_N()
-        if (rs_orig & 0x0F) < (ro_orig & 0x0F):
+        if (rs_orig & 0x0F) < ((ro_orig & 0x0F) + c_orig):
             self.set_flag_H()
         else:
             self.reset_flag_H()
@@ -573,7 +575,7 @@ class GameBoy:
     # 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7
     def AND(self, register_store, register_other, addr=False):
         if addr:
-            result = register_store.get() & self.memory[register_other_address.get()]
+            result = register_store.get() & self.memory[register_other.get()]
         else:
             result = register_store.get() & register_other.get()
         register_store.set(result)
@@ -592,7 +594,7 @@ class GameBoy:
     # 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF
     def XOR(self, register_store, register_other, addr=False):
         if addr:
-            result = register_store.get() ^ self.memory[register_other_address.get()]
+            result = register_store.get() ^ self.memory[register_other.get()]
         else:
             result = register_store.get() ^ register_other.get()
         register_store.set(result)
@@ -611,7 +613,7 @@ class GameBoy:
     # 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7
     def OR(self, register_store, register_other, addr=False):
         if addr:
-            result = register_store.get() | self.memory[register_other_address.get()]
+            result = register_store.get() | self.memory[register_other.get()]
         else:
             result = register_store.get() | register_other.get()
         register_store.set(result)
