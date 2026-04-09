@@ -519,7 +519,7 @@ class GameBoy:
         if addr:
             ro_orig = self.memory[ro_orig]
         result = rs_orig + ro_orig + c_orig
-        if result == 0:
+        if (result & 0xFF) == 0:
             self.set_flag_Z()
         else:
             self.reset_flag_Z()
@@ -548,7 +548,7 @@ class GameBoy:
         result = rs_orig - ro_orig - c_orig
         while result < 0:
             result += 0x100
-        if result == 0:
+        if (result & 0xFF) == 0:
             self.set_flag_Z()
         else:
             self.reset_flag_Z()
@@ -557,7 +557,7 @@ class GameBoy:
             self.set_flag_H()
         else:
             self.reset_flag_H()
-        if rs_orig < ro_orig:
+        if rs_orig < (ro_orig + c_orig):
             self.set_flag_C()
         else:
             self.reset_flag_C()
