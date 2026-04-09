@@ -109,7 +109,7 @@ class GameBoy:
         # CPU flags
         self.interrupt_master_enable = False
         self.is_halted = False
-        self.is_stopped = True
+        self.is_stopped = False
 
         # 8-bit registers
         self.A = Register8(0x01)
