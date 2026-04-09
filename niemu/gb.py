@@ -213,6 +213,9 @@ class GameBoy:
         self.instructions[0x75] = lambda: self.LD_addr_X(self.L, self.HL,  0) # 0x75 = LD (HL), L
         self.instructions[0x77] = lambda: self.LD_addr_X(self.A, self.HL,  0) # 0x77 = LD (HL), A
 
+        # define LD (?), ? instructions
+        self.instructions[0xE2] = lambda: self.LD_addr_X_FF00(self.A, self.C) # 0xE2 = LD (C), A
+
         # define LD ?, (??) instructions
         self.instructions[0x0A] = lambda: self.LD_X_addr(self.BC, self.A,  0) # 0x0A = LD A, (BC)
         self.instructions[0x1A] = lambda: self.LD_X_addr(self.DE, self.A,  0) # 0x1A = LD A, (DE)
@@ -225,6 +228,9 @@ class GameBoy:
         self.instructions[0x66] = lambda: self.LD_X_addr(self.HL, self.H,  0) # 0x66 = LD H, (HL)
         self.instructions[0x6E] = lambda: self.LD_X_addr(self.HL, self.L,  0) # 0x6E = LD L, (HL)
         self.instructions[0x7E] = lambda: self.LD_X_addr(self.HL, self.A,  0) # 0x7E = LD A, (HL)
+
+        # define LD ?, (?) instructions
+        self.instructions[0xF2] = lambda: self.LD_X_addr_FF00(self.C, self.A) # 0xF2 = LD A, (C)
 
         # define INC ?? instructions
         self.instructions[0x03] = lambda: self.INC_XX(self.BC) # 0x03 = INC BC
@@ -528,11 +534,21 @@ class GameBoy:
             register_target_address.add(register_target_delta)
         return 1, 2
 
+    # 0xE2
+    def LD_addr_X_FF00(self, register_source, register_target_address):
+        self.memory[0xFF00 | register_target_address.get()] = register_source.get()
+        return 1, 2
+
     # 0x0A, 0x1A, 0x2A, 0x3A
     def LD_X_addr(self, register_source_address, register_target, register_source_delta=0):
         register_target.set(self.memory[register_source_address.get()])
         if register_source_delta != 0:
             register_source_address.add(register_source_delta)
+        return 1, 2
+
+    # 0xF2
+    def LD_X_addr_FF00(self, register_source_address, register_target):
+        register_target.set(self.memory[0xFF00 | register_source_address.get()])
         return 1, 2
 
     # 0x03, 0x13, 0x23, 0x33
