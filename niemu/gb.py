@@ -213,6 +213,19 @@ class GameBoy:
         self.instructions[0x75] = lambda: self.LD_addr_X(self.L, self.HL,  0) # 0x75 = LD (HL), L
         self.instructions[0x77] = lambda: self.LD_addr_X(self.A, self.HL,  0) # 0x77 = LD (HL), A
 
+        # define LD ?, (??) instructions
+        self.instructions[0x0A] = lambda: self.LD_X_addr(self.BC, self.A,  0) # 0x0A = LD A, (BC)
+        self.instructions[0x1A] = lambda: self.LD_X_addr(self.DE, self.A,  0) # 0x1A = LD A, (DE)
+        self.instructions[0x2A] = lambda: self.LD_X_addr(self.HL, self.A,  1) # 0x2A = LD A, (HL+)
+        self.instructions[0x3A] = lambda: self.LD_X_addr(self.HL, self.A, -1) # 0x3A = LD A, (HL-)
+        self.instructions[0x46] = lambda: self.LD_X_addr(self.HL, self.B,  0) # 0x46 = LD B, (HL)
+        self.instructions[0x4E] = lambda: self.LD_X_addr(self.HL, self.C,  0) # 0x4E = LD C, (HL)
+        self.instructions[0x56] = lambda: self.LD_X_addr(self.HL, self.D,  0) # 0x56 = LD D, (HL)
+        self.instructions[0x5E] = lambda: self.LD_X_addr(self.HL, self.E,  0) # 0x5E = LD E, (HL)
+        self.instructions[0x66] = lambda: self.LD_X_addr(self.HL, self.H,  0) # 0x66 = LD H, (HL)
+        self.instructions[0x6E] = lambda: self.LD_X_addr(self.HL, self.L,  0) # 0x6E = LD L, (HL)
+        self.instructions[0x7E] = lambda: self.LD_X_addr(self.HL, self.A,  0) # 0x7E = LD A, (HL)
+
         # define INC ?? instructions
         self.instructions[0x03] = lambda: self.INC_XX(self.BC) # 0x03 = INC BC
         self.instructions[0x13] = lambda: self.INC_XX(self.DE) # 0x13 = INC DE
@@ -513,6 +526,13 @@ class GameBoy:
         self.memory[register_target_address.get()] = register_source.get()
         if register_target_delta != 0:
             register_target_address.add(register_target_delta)
+        return 1, 2
+
+    # 0x0A, 0x1A, 0x2A, 0x3A
+    def LD_X_addr(self, register_source_address, register_target, register_source_delta=0):
+        register_target.set(self.memory[register_source_address.get()])
+        if register_source_delta != 0:
+            register_source_address.add(register_source_delta)
         return 1, 2
 
     # 0x03, 0x13, 0x23, 0x33
