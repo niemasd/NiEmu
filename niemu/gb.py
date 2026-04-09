@@ -154,7 +154,7 @@ class GameBoy:
     # initialize a GameBoy object
     def __init__(self):
         # CPU flags
-        self.interrupt_master_enable = False
+        self.ime = False
         self.is_halted = False
         self.is_stopped = False
 
@@ -420,6 +420,14 @@ class GameBoy:
         self.instructions[0xBE] = lambda: self.SUB_X_X(self.A, self.HL, store=False, addr=True) # 0xBE = CP (HL)
         self.instructions[0xFE] = lambda: self.SUB_X_d8(self.A, store=False)                    # 0xFE = CP d8
 
+        # define RET instructions
+        self.instructions[0xC0] = lambda: self.RET(not self.get_flag_Z())        # 0xC0 = RET NZ
+        self.instructions[0xC8] = lambda: self.RET(self.get_flag_Z())            # 0xC8 = RET Z
+        self.instructions[0xC9] = lambda: self.RET(True, num_cycles=4)           # 0xC9 = RET
+        self.instructions[0xD0] = lambda: self.RET(not self.get_flag_C())        # 0xD0 = RET NC
+        self.instructions[0xD8] = lambda: self.RET(self.get_flag_C())            # 0xD8 = RET C
+        self.instructions[0xD9] = lambda: self.RET(True, num_cycles=4, ime=True) # 0xD9 = RETI
+
         # define JP instructions
         self.instructions[0xC2] = lambda: self.JP_a16(not self.get_flag_Z()) # 0xC2 = JP NZ, a16
         self.instructions[0xC3] = lambda: self.JP_a16(True)                  # 0xC3 = JP a16
@@ -476,14 +484,14 @@ class GameBoy:
     def reset_flag_C(self): # Carry
         self.F.reset_bit(4)
 
-    # read 8 bits (1 byte) after the PC
-    def read_PC_8(self):
-        return self.memory[self.PC.get() + 1]
+    # read 8 bits (1 byte) after the given register
+    def read_8(self, register):
+        return self.memory[register.get() + 1]
 
-    # read 16 bits (2 bytes) after the PC
-    def read_PC_16(self):
-        pc_orig = self.PC.get()
-        return uint16(self.memory[pc_orig + 1] | (self.memory[pc_orig + 2] << 8))
+    # read 16 bits (2 bytes) after the given register
+    def read_16(self, register):
+        orig = register.get()
+        return uint16(self.memory[orig + 1] | (self.memory[orig + 2] << 8))
 
     # push 16-bit value onto stack
     def push_16(self, value):
@@ -505,11 +513,11 @@ class GameBoy:
         # HALT exits as soon as an interrupt is pending, even if IME is off
         if self.is_halted:
             self.is_halted = False
-        if not self.interrupt_master_enable:
+        if not self.ime:
             return 0
         for mask, vector in INTERRUPT_VECTORS:
             if pending & mask:
-                self.interrupt_master_enable = False
+                self.ime = False
                 self.memory[0xFF0F] = interrupt_flags & (~mask & 0xFF)
                 self.push_16(int(self.PC.get()))
                 self.PC.set(vector)
@@ -549,7 +557,7 @@ class GameBoy:
 
     # 0xF3, 0xFB
     def set_IME(self, value):
-        self.interrupt_master_enable = value
+        self.ime = value
         return 1, 1
 
     # 0x40-0x45, 0x47-0x4D, 0x4F-0x55, 0x57-0x5D, 0x5F-0x65, 0x67-0x6D, 0x6F, 0x78-0x7D, 0x7F
@@ -559,37 +567,37 @@ class GameBoy:
 
     # 0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E, 0x3E
     def LD_X_d8(self, register):
-        register.set(self.read_PC_8())
+        register.set(self.read_8(self.PC))
         return 2, 2
 
     # 0x36
     def LD_addr_d8(self, register_target_address):
-        self.memory[register_target_address.get()] = self.read_PC_8()
+        self.memory[register_target_address.get()] = self.read_8(self.PC)
         return 2, 3
 
     # 0x01, 0x11, 0x21, 0x31
     def LD_XX_d16(self, register):
-        register.set(self.read_PC_16())
+        register.set(self.read_16(self.PC))
         return 3, 3
 
     # 0xE0
     def LD_a8_X(self, register):
-        self.memory[0xFF00 | self.read_PC_8()] = register.get()
+        self.memory[0xFF00 | self.read_8(self.PC)] = register.get()
         return 2, 3
 
     # 0xEA
     def LD_a16_X(self, register):
-        self.memory[self.read_PC_16()] = register.get()
+        self.memory[self.read_16(self.PC)] = register.get()
         return 3, 4
 
     # 0xF0
     def LD_X_a8(self, register):
-        register.set(self.memory[0xFF00 | self.read_PC_8()])
+        register.set(self.memory[0xFF00 | self.read_8(self.PC)])
         return 2, 3
 
     # 0xFA
     def LD_X_a16(self, register):
-        register.set(self.memory[self.read_PC_16()])
+        register.set(self.memory[self.read_16(self.PC)])
         return 3, 4
 
     # 0x02, 0x12, 0x22, 0x32
@@ -735,7 +743,7 @@ class GameBoy:
     # 0xC6, 0xCE
     def ADD_X_d8(self, register_store, carry=False):
         rs_orig = register_store.get()
-        ro_orig = self.read_PC_8()
+        ro_orig = self.read_8(self.PC)
         c_orig = int(carry and self.get_flag_C())
         result = rs_orig + ro_orig + c_orig
         if (result & 0xFF) == 0:
@@ -785,7 +793,7 @@ class GameBoy:
     # 0xD6, 0xDE, 0xFE
     def SUB_X_d8(self, register_store, store=True, carry=False):
         rs_orig = int(register_store.get())
-        ro_orig = int(self.read_PC_8())
+        ro_orig = int(self.read_8(self.PC))
         c_orig = int(carry and self.get_flag_C())
         result = (rs_orig - ro_orig - c_orig) & 0xFF
         if result == 0:
@@ -826,7 +834,7 @@ class GameBoy:
 
     # 0xE6
     def AND_d8(self, register_store):
-        result = register_store.get() & self.read_PC_8()
+        result = register_store.get() & self.read_8(self.PC)
         register_store.set(result)
         if result == 0:
             self.set_flag_Z()
@@ -858,7 +866,7 @@ class GameBoy:
 
     # 0xEE
     def XOR_d8(self, register_store):
-        result = register_store.get() ^ self.read_PC_8()
+        result = register_store.get() ^ self.read_8(self.PC)
         register_store.set(result)
         if result == 0:
             self.set_flag_Z()
@@ -890,7 +898,7 @@ class GameBoy:
 
     # 0xF6
     def OR_d8(self, register_store):
-        result = register_store.get() | self.read_PC_8()
+        result = register_store.get() | self.read_8(self.PC)
         register_store.set(result)
         if result == 0:
             self.set_flag_Z()
@@ -904,7 +912,7 @@ class GameBoy:
     # 0x18, 0x20, 0x28, 0x30, 0x38
     def JR_s8(self, condition):
         if condition:
-            self.PC.add(2 + int8(self.read_PC_8()))
+            self.PC.add(2 + int8(self.read_8(self.PC)))
             return 0, 3 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
             return 2, 2
@@ -912,7 +920,7 @@ class GameBoy:
     # 0xC2, 0xC3, 0xCA, 0xD2, 0xDA
     def JP_a16(self, condition):
         if condition:
-            self.PC.set(self.read_PC_16())
+            self.PC.set(self.read_16(self.PC))
             return 0, 4 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
             return 3, 3
@@ -926,12 +934,21 @@ class GameBoy:
     def CALL_a16(self, condition):
         if condition:
             self.push_16(self.PC.get() + 3)
-            self.PC.set(self.read_PC_16())
+            self.PC.set(self.read_16(self.PC))
             return 0, 6 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
             return 3, 3
 
-    # 0xTODO
+    # 0xC0, 0xC8, 0xC9, 0xD0, 0xD8, 0xD9
+    def RET(self, condition, num_cycles=5, ime=False):
+        if condition:
+            self.PC.set(self.read_16(self.SP))
+            self.SP.add(2)
+            if ime:
+                self.ime = True
+            return 1, num_cycles
+        else:
+            return 1, 2
 
     # load a game
     def load_game(self, path):
