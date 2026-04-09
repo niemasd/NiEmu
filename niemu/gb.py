@@ -779,14 +779,15 @@ class GameBoy:
                 if opcode == 0xCB:
                     cb_opcode = self.memory[pc_orig + 1]
                     try:
-                        num_bytes, num_m_cycles = self.instructions[0xCB][cb_opcode]()
+                        instruction_func = self.instructions[0xCB][cb_opcode]
                     except:
                         raise ValueError(f"Unknown opcode: 0xCB{cb_opcode:02X}")
                 else:
                     try:
-                        num_bytes, num_m_cycles = self.instructions[opcode]()
+                        instruction_func = self.instructions[opcode]
                     except:
                         raise ValueError(f"Unknown opcode: 0x{opcode:02X}")
+                num_bytes, num_m_cycles = instruction_func()
                 self.PC.add(num_bytes)
                 self.ppu.step(num_m_cycles)
                 m_cycles_remaining -= num_m_cycles
