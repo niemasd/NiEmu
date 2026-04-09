@@ -641,11 +641,11 @@ class GameBoy:
     # 0xE6
     def AND_d8(self, register_store):
         result = register_store.get() & self.read_PC_8()
+        register_store.set(result)
         if result == 0:
             self.set_flag_Z()
         else:
             self.reset_flag_Z()
-        register_store.set(result)
         self.reset_flag_N()
         self.set_flag_H()
         self.reset_flag_C()
