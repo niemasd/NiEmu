@@ -518,8 +518,7 @@ class GameBoy:
         c_orig = int(carry and self.get_flag_C())
         if addr:
             ro_orig = self.memory[ro_orig]
-        result = rs_orig + ro_orig
-        result += c_orig
+        result = rs_orig + ro_orig + c_orig
         if result == 0:
             self.set_flag_Z()
         else:
@@ -546,8 +545,7 @@ class GameBoy:
         c_orig = int(carry and self.get_flag_C())
         if addr:
             ro_orig = int(self.memory[ro_orig])
-        result = rs_orig - ro_orig
-        result += c_orig
+        result = rs_orig - ro_orig - c_orig
         while result < 0:
             result += 0x100
         if result == 0:
