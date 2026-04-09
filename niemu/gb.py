@@ -273,6 +273,16 @@ class GameBoy:
         self.instructions[0xAF] = lambda: self.XOR(self.A, self.A)             # 0xAF = XOR A
         self.instructions[0xAE] = lambda: self.XOR(self.A, self.HL, addr=True) # 0xAE = XOR (HL)
 
+        # define OR ? instructions
+        self.instructions[0xB0] = lambda: self.OR(self.A, self.B)             # 0xB0 = OR B
+        self.instructions[0xB1] = lambda: self.OR(self.A, self.C)             # 0xB1 = OR C
+        self.instructions[0xB2] = lambda: self.OR(self.A, self.D)             # 0xB2 = OR D
+        self.instructions[0xB3] = lambda: self.OR(self.A, self.E)             # 0xB3 = OR E
+        self.instructions[0xB4] = lambda: self.OR(self.A, self.H)             # 0xB4 = OR H
+        self.instructions[0xB5] = lambda: self.OR(self.A, self.L)             # 0xB5 = OR L
+        self.instructions[0xB7] = lambda: self.OR(self.A, self.A)             # 0xB7 = OR A
+        self.instructions[0xB6] = lambda: self.OR(self.A, self.HL, addr=True) # 0xB6 = OR (HL)
+
         # define JP instructions
         self.instructions[0xC2] = lambda: self.JP_a16(not self.get_flag_Z()) # 0xC2 = JP NZ, a16
         self.instructions[0xC3] = lambda: self.JP_a16(True)                  # 0xC3 = JP a16
@@ -574,6 +584,25 @@ class GameBoy:
             result = register_store.get() ^ self.memory[register_other_address.get()]
         else:
             result = register_store.get() ^ register_other.get()
+        register_store.set(result)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        self.reset_flag_H()
+        self.reset_flag_C()
+        if addr:
+            return 1, 2
+        else:
+            return 1, 1
+
+    # 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7
+    def OR(self, register_store, register_other, addr=False):
+        if addr:
+            result = register_store.get() | self.memory[register_other_address.get()]
+        else:
+            result = register_store.get() | register_other.get()
         register_store.set(result)
         if result == 0:
             self.set_flag_Z()
