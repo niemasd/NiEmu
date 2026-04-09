@@ -281,6 +281,57 @@ class GameBoy:
         self.instructions[0x30] = lambda: self.JR_s8(not self.get_flag_C()) # 0x30 = JR NC, s8
         self.instructions[0x38] = lambda: self.JR_s8(self.get_flag_C())     # 0x38 = JR C, s8
 
+        # define LD ?, ? instructions
+        self.instructions[0x40] = lambda: self.LD_X_X(self.B, self.B) # 0x40 = LD B, B
+        self.instructions[0x41] = lambda: self.LD_X_X(self.B, self.C) # 0x41 = LD B, C
+        self.instructions[0x42] = lambda: self.LD_X_X(self.B, self.D) # 0x42 = LD B, D
+        self.instructions[0x43] = lambda: self.LD_X_X(self.B, self.E) # 0x43 = LD B, E
+        self.instructions[0x44] = lambda: self.LD_X_X(self.B, self.H) # 0x44 = LD B, H
+        self.instructions[0x45] = lambda: self.LD_X_X(self.B, self.L) # 0x45 = LD B, L
+        self.instructions[0x47] = lambda: self.LD_X_X(self.B, self.A) # 0x47 = LD B, A
+        self.instructions[0x48] = lambda: self.LD_X_X(self.C, self.B) # 0x48 = LD C, B
+        self.instructions[0x49] = lambda: self.LD_X_X(self.C, self.C) # 0x49 = LD C, C
+        self.instructions[0x4A] = lambda: self.LD_X_X(self.C, self.D) # 0x4A = LD C, D
+        self.instructions[0x4B] = lambda: self.LD_X_X(self.C, self.E) # 0x4B = LD C, E
+        self.instructions[0x4C] = lambda: self.LD_X_X(self.C, self.H) # 0x4C = LD C, H
+        self.instructions[0x4D] = lambda: self.LD_X_X(self.C, self.L) # 0x4D = LD C, L
+        self.instructions[0x4F] = lambda: self.LD_X_X(self.C, self.A) # 0x4F = LD C, A
+        self.instructions[0x50] = lambda: self.LD_X_X(self.D, self.B) # 0x50 = LD D, B
+        self.instructions[0x51] = lambda: self.LD_X_X(self.D, self.C) # 0x51 = LD D, C
+        self.instructions[0x52] = lambda: self.LD_X_X(self.D, self.D) # 0x52 = LD D, D
+        self.instructions[0x53] = lambda: self.LD_X_X(self.D, self.E) # 0x53 = LD D, E
+        self.instructions[0x54] = lambda: self.LD_X_X(self.D, self.H) # 0x54 = LD D, H
+        self.instructions[0x55] = lambda: self.LD_X_X(self.D, self.L) # 0x55 = LD D, L
+        self.instructions[0x57] = lambda: self.LD_X_X(self.D, self.A) # 0x57 = LD D, A
+        self.instructions[0x58] = lambda: self.LD_X_X(self.E, self.B) # 0x58 = LD E, B
+        self.instructions[0x59] = lambda: self.LD_X_X(self.E, self.C) # 0x59 = LD E, C
+        self.instructions[0x5A] = lambda: self.LD_X_X(self.E, self.D) # 0x5A = LD E, D
+        self.instructions[0x5B] = lambda: self.LD_X_X(self.E, self.E) # 0x5B = LD E, E
+        self.instructions[0x5C] = lambda: self.LD_X_X(self.E, self.H) # 0x5C = LD E, H
+        self.instructions[0x5D] = lambda: self.LD_X_X(self.E, self.L) # 0x5D = LD E, L
+        self.instructions[0x5F] = lambda: self.LD_X_X(self.E, self.A) # 0x5F = LD E, A
+        self.instructions[0x60] = lambda: self.LD_X_X(self.H, self.B) # 0x60 = LD H, B
+        self.instructions[0x61] = lambda: self.LD_X_X(self.H, self.C) # 0x61 = LD H, C
+        self.instructions[0x62] = lambda: self.LD_X_X(self.H, self.D) # 0x62 = LD H, D
+        self.instructions[0x63] = lambda: self.LD_X_X(self.H, self.E) # 0x63 = LD H, E
+        self.instructions[0x64] = lambda: self.LD_X_X(self.H, self.H) # 0x64 = LD H, H
+        self.instructions[0x65] = lambda: self.LD_X_X(self.H, self.L) # 0x65 = LD H, L
+        self.instructions[0x67] = lambda: self.LD_X_X(self.H, self.A) # 0x67 = LD H, A
+        self.instructions[0x68] = lambda: self.LD_X_X(self.L, self.B) # 0x68 = LD L, B
+        self.instructions[0x69] = lambda: self.LD_X_X(self.L, self.C) # 0x69 = LD L, C
+        self.instructions[0x6A] = lambda: self.LD_X_X(self.L, self.D) # 0x6A = LD L, D
+        self.instructions[0x6B] = lambda: self.LD_X_X(self.L, self.E) # 0x6B = LD L, E
+        self.instructions[0x6C] = lambda: self.LD_X_X(self.L, self.H) # 0x6C = LD L, H
+        self.instructions[0x6D] = lambda: self.LD_X_X(self.L, self.L) # 0x6D = LD L, L
+        self.instructions[0x6F] = lambda: self.LD_X_X(self.L, self.A) # 0x6F = LD L, A
+        self.instructions[0x78] = lambda: self.LD_X_X(self.A, self.B) # 0x78 = LD A, B
+        self.instructions[0x79] = lambda: self.LD_X_X(self.A, self.C) # 0x79 = LD A, C
+        self.instructions[0x7A] = lambda: self.LD_X_X(self.A, self.D) # 0x7A = LD A, D
+        self.instructions[0x7B] = lambda: self.LD_X_X(self.A, self.E) # 0x7B = LD A, E
+        self.instructions[0x7C] = lambda: self.LD_X_X(self.A, self.H) # 0x7C = LD A, H
+        self.instructions[0x7D] = lambda: self.LD_X_X(self.A, self.L) # 0x7D = LD A, L
+        self.instructions[0x7F] = lambda: self.LD_X_X(self.A, self.A) # 0x7F = LD A, A
+
         # define ADD ?, ? instructions
         self.instructions[0x80] = lambda: self.ADD_X_X(self.A, self.B)             # 0x80 = ADD A, B
         self.instructions[0x81] = lambda: self.ADD_X_X(self.A, self.C)             # 0x81 = ADD A, C
@@ -499,6 +550,11 @@ class GameBoy:
     # 0xF3, 0xFB
     def set_IME(self, value):
         self.interrupt_master_enable = value
+        return 1, 1
+
+    # 0x40, TODO
+    def LD_X_X(self, register_store, register_other):
+        register_store.set(register_other.get())
         return 1, 1
 
     # 0x06, 0x0E, 0x16, 0x1E, 0x26, 0x2E, 0x3E
