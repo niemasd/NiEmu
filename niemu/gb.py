@@ -776,11 +776,13 @@ class GameBoy:
                     cb_opcode = self.memory[pc_orig + 1]
                     try:
                         instruction_func = self.instructions[0xCB][cb_opcode]
+                        assert instruction_func is not None
                     except:
                         raise ValueError(f"Unknown opcode: 0xCB{cb_opcode:02X}")
                 else:
                     try:
                         instruction_func = self.instructions[opcode]
+                        assert instruction_func is not None
                     except:
                         raise ValueError(f"Unknown opcode: 0x{opcode:02X}")
                 num_bytes, num_m_cycles = instruction_func()
