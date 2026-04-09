@@ -515,12 +515,11 @@ class GameBoy:
     def ADD_X_X(self, register_store, register_other, addr=False, carry=False):
         rs_orig = register_store.get()
         ro_orig = register_other.get()
-        c_orig = int(self.get_flag_C())
+        c_orig = int(carry and self.get_flag_C())
         if addr:
             ro_orig = self.memory[ro_orig]
         result = rs_orig + ro_orig
-        if carry:
-            result += c_orig
+        result += c_orig
         if result == 0:
             self.set_flag_Z()
         else:
@@ -544,12 +543,11 @@ class GameBoy:
     def SUB_X_X(self, register_store, register_other, store=True, addr=False, carry=False):
         rs_orig = int(register_store.get())
         ro_orig = int(register_other.get())
-        c_orig = int(self.get_flag_C())
+        c_orig = int(carry and self.get_flag_C())
         if addr:
             ro_orig = int(self.memory[ro_orig])
         result = rs_orig - ro_orig
-        if carry:
-            result += c_orig
+        result += c_orig
         while result < 0:
             result += 0x100
         if result == 0:
