@@ -17,17 +17,27 @@ WIDTH = 160
 HEIGHT = 144
 FPS = 59.73
 COLOR_PALETTE = [COLOR_WHITE, COLOR_GRAY_LIGHT, COLOR_GRAY_DARK, COLOR_BLACK]
+INTERRUPT_VECTORS = [
+    (0x01, 0x0040), # VBlank
+    (0x02, 0x0048), # LCD STAT
+    (0x04, 0x0050), # Timer
+    (0x08, 0x0058), # Serial
+    (0x10, 0x0060), # Joypad
+]
 
 # class to represent Game Boy PPU
 class PPU:
     # initialize a PPU object
     def __init__(self, memory):
         self.memory = memory
+        self.scanline_m_cycles = 0
         self.memory[0xFF40] = 0x91  # LCDC: LCD on, BG on, tile data 0x8000, BG map 0x9800
+        self.memory[0xFF41] = 0x85  # STAT
         self.memory[0xFF42] = 0x00  # SCY
         self.memory[0xFF43] = 0x00  # SCX
         self.memory[0xFF44] = 0x00  # LY
-        self.memory[0xFF47] = 0xE4  # BGP
+        self.memory[0xFF45] = 0x00  # LYC
+        self.memory[0xFF47] = 0xFC  # BGP
 
     # register helpers
     def lcd_enabled(self):
@@ -93,9 +103,46 @@ class PPU:
     def render_frame(self, surface):
         self.render_background(surface)
 
-    # placeholder for future timing-based PPU (right now just keep LY sane)
+    # advance LCD timing
     def step(self, m_cycles):
-        self.memory[0xFF44] = 0
+        # handle LCD not enabled
+        if not self.lcd_enabled():
+            self.scanline_m_cycles = 0
+            self.memory[0xFF44] = 0
+            self.memory[0xFF41] = (self.memory[0xFF41] & 0xFC) | 0
+            return
+
+        # 114 M-cycles per scanline
+        self.scanline_m_cycles += m_cycles
+        while self.scanline_m_cycles >= 114:
+            self.scanline_m_cycles -= 114
+            ly = (int(self.memory[0xFF44]) + 1) % 154
+            self.memory[0xFF44] = ly
+            if ly == 144:
+                self.memory[0xFF0F] |= 0x01  # request VBlank interrupt
+
+        # update STAT mode
+        ly = int(self.memory[0xFF44])
+        stat = int(self.memory[0xFF41]) & 0xFC
+        if ly >= 144:
+            mode = 1  # VBlank
+        else:
+            # rough visible-line timing split
+            if self.scanline_m_cycles < 20:
+                mode = 2  # OAM search
+            elif self.scanline_m_cycles < 63:
+                mode = 3  # drawing
+            else:
+                mode = 0  # HBlank
+        stat |= mode
+
+        # LYC == LY flag
+        lyc = int(self.memory[0xFF45])
+        if ly == lyc:
+            stat |= 0x04
+        else:
+            stat &= 0xFB
+        self.memory[0xFF41] = stat
 
 # class to represent F register
 class RegisterF(Register8):
@@ -131,6 +178,8 @@ class GameBoy:
 
         # memory, PPU, and other key variables
         self.memory = Memory(0x10000)
+        self.memory[0xFF0F] = 0xE1 # IF
+        self.memory[0xFFFF] = 0x00 # IE
         self.ppu = PPU(self.memory)
         self.cartridge = None
         self.instructions = [None]*0x100
@@ -356,6 +405,37 @@ class GameBoy:
     def read_PC_16(self):
         pc_orig = self.PC.get()
         return uint16(self.memory[pc_orig + 1] | (self.memory[pc_orig + 2] << 8))
+
+    # push 16-bit value onto stack
+    def push_16(self, value):
+        sp = int(self.SP.get())
+        sp = (sp - 1) & 0xFFFF
+        self.memory[sp] = (value >> 8) & 0xFF
+        sp = (sp - 1) & 0xFFFF
+        self.memory[sp] = value & 0xFF
+        self.SP.set(sp)
+
+    # service one pending interrupt if possible
+    def service_interrupts(self):
+        interrupt_enable = int(self.memory[0xFFFF])
+        interrupt_flags = int(self.memory[0xFF0F])
+        pending = interrupt_enable & interrupt_flags & 0x1F
+        if pending == 0:
+            return 0
+
+        # HALT exits as soon as an interrupt is pending, even if IME is off
+        if self.is_halted:
+            self.is_halted = False
+        if not self.interrupt_master_enable:
+            return 0
+        for mask, vector in INTERRUPT_VECTORS:
+            if pending & mask:
+                self.interrupt_master_enable = False
+                self.memory[0xFF0F] = interrupt_flags & (~mask & 0xFF)
+                self.push_16(int(self.PC.get()))
+                self.PC.set(vector)
+                return 5  # interrupt servicing costs 5 M-cycles
+        return 0
 
     # 0x00
     def NOP(self):
@@ -742,6 +822,7 @@ class GameBoy:
         if self.cartridge[0x0147] != 0:
             raise NotImplementedError("Memory Bank Controllers (MBCs) are not implemented")
         self.memory[0x0000 : len(self.cartridge)] = memoryview(self.cartridge) # only supports "No MBC" (32 KiB ROM)
+        self.memory[0xFFFF] = 0x01 # enable VBlank interrupt
 
     # emulation loop
     def run(self):
@@ -770,6 +851,21 @@ class GameBoy:
             # run 17,556 M-cycles
             m_cycles_remaining = 17556
             while m_cycles_remaining > 0:
+                # handle interrupts
+                interrupt_m_cycles = self.service_interrupts()
+                if interrupt_m_cycles > 0:
+                    self.ppu.step(interrupt_m_cycles)
+                    m_cycles_remaining -= interrupt_m_cycles
+                    continue
+
+                # handle CPU halt
+                if self.is_halted:
+                    num_m_cycles = 1
+                    self.ppu.step(num_m_cycles)
+                    m_cycles_remaining -= num_m_cycles
+                    continue
+
+                # rest of logic
                 pc_orig = self.PC.get()
                 opcode = self.memory[pc_orig]
                 if opcode == 0xCB:
