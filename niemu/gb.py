@@ -268,6 +268,12 @@ class GameBoy:
         self.instructions[0x6E] = lambda: self.LD_X_addr(self.HL, self.L,  0) # 0x6E = LD L, (HL)
         self.instructions[0x7E] = lambda: self.LD_X_addr(self.HL, self.A,  0) # 0x7E = LD A, (HL)
 
+        # define DEC ?? instructions
+        self.instructions[0x0B] = lambda: self.DEC_XX(self.BC) # 0x0B = DEC BC
+        self.instructions[0x1B] = lambda: self.DEC_XX(self.DE) # 0x1B = DEC DE
+        self.instructions[0x2B] = lambda: self.DEC_XX(self.HL) # 0x2B = DEC HL
+        self.instructions[0x3B] = lambda: self.DEC_XX(self.SP) # 0x3B = DEC SP
+
         # define JR instructions
         self.instructions[0x18] = lambda: self.JR_s8(True)                  # 0x18 = JR s8
         self.instructions[0x20] = lambda: self.JR_s8(not self.get_flag_Z()) # 0x20 = JR NZ, s8
@@ -589,6 +595,11 @@ class GameBoy:
         else:
             self.reset_flag_H()
         return 1, 3
+
+    # 0x0B, 0x1B, 0x2B, 0x3B
+    def DEC_XX(self, register):
+        register.add(-1)
+        return 1, 2
 
     # 0x05, 0x0D, 0x15, 0x1D, 0x25, 0x2D, 0x3D
     def DEC_X(self, register):
