@@ -485,13 +485,13 @@ class GameBoy:
         self.F.reset_bit(4)
 
     # read 8 bits (1 byte) after the given register
-    def read_8(self, register):
-        return self.memory[register.get() + 1]
+    def read_8(self, register, delta=1):
+        return self.memory[register.get() + delta]
 
     # read 16 bits (2 bytes) after the given register
-    def read_16(self, register):
+    def read_16(self, register, delta=1):
         orig = register.get()
-        return uint16(self.memory[orig + 1] | (self.memory[orig + 2] << 8))
+        return uint16(self.memory[orig + delta] | (int(self.memory[orig + delta + 1]) << 8))
 
     # push 16-bit value onto stack
     def push_16(self, value):
@@ -942,7 +942,7 @@ class GameBoy:
     # 0xC0, 0xC8, 0xC9, 0xD0, 0xD8, 0xD9
     def RET(self, condition, num_cycles=5, ime=False):
         if condition:
-            self.PC.set(self.read_16(self.SP))
+            self.PC.set(self.read_16(self.SP, delta=0))
             self.SP.add(2)
             if ime:
                 self.ime = True

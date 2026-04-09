@@ -100,7 +100,7 @@ class Register8Pair(Register16):
         self.high = register_high
         self.low = register_low
     def get(self):
-        return uint16(((self.high.get() << 8) | self.low.get()) & 0xFFFF)
+        return uint16(((int(self.high.get()) << 8) | self.low.get()) & 0xFFFF)
     def set(self, value):
         self.high.set((value >> 8) & 0xFF)
         self.low.set(value & 0xFF)
