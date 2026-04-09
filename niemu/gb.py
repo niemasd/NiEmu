@@ -9,7 +9,7 @@ https://rgbds.gbdev.io/docs/v1.0.1/gbz80.7
 
 # imports
 from niemu.common import COLOR_BLACK, COLOR_GRAY_DARK, COLOR_GRAY_LIGHT, COLOR_WHITE, load_game_data, Memory, Register8, Register8Pair, Register16
-from numpy import int8, uint16
+from numpy import int8, uint8, uint16
 import pygame
 
 # constants
@@ -428,6 +428,12 @@ class GameBoy:
         self.instructions[0xD8] = lambda: self.RET(self.get_flag_C())            # 0xD8 = RET C
         self.instructions[0xD9] = lambda: self.RET(True, num_cycles=4, ime=True) # 0xD9 = RETI
 
+        # define POP instructions
+        self.instructions[0xC1] = lambda: self.POP(self.BC) # 0xC1 = POP BC
+        self.instructions[0xD1] = lambda: self.POP(self.DE) # 0xD1 = POP DE
+        self.instructions[0xE1] = lambda: self.POP(self.HL) # 0xE1 = POP HL
+        self.instructions[0xF1] = lambda: self.POP(self.AF) # 0xF1 = POP AF
+
         # define JP instructions
         self.instructions[0xC2] = lambda: self.JP_a16(not self.get_flag_Z()) # 0xC2 = JP NZ, a16
         self.instructions[0xC3] = lambda: self.JP_a16(True)                  # 0xC3 = JP a16
@@ -443,12 +449,19 @@ class GameBoy:
         self.instructions[0xD4] = lambda: self.CALL_a16(not self.get_flag_C()) # 0xD4 = CALL NC, a16
         self.instructions[0xDC] = lambda: self.CALL_a16(self.get_flag_C())     # 0xDC = CALL C, a16
 
+        # define PUSH instructions
+        self.instructions[0xC5] = lambda: self.PUSH(self.BC.get()) # 0xC5 = PUSH BC
+        self.instructions[0xD5] = lambda: self.PUSH(self.DE.get()) # 0xD5 = PUSH DE
+        self.instructions[0xE5] = lambda: self.PUSH(self.HL.get()) # 0xE5 = PUSH HL
+        self.instructions[0xF5] = lambda: self.PUSH(self.AF.get()) # 0xF5 = PUSH AF
+
         # define additional LD operations
         self.instructions[0xE0] = lambda: self.LD_a8_X(self.A)                # 0xE0 = LD (a8), A
         self.instructions[0xE2] = lambda: self.LD_addr_X_FF00(self.A, self.C) # 0xE2 = LD (C), A
         self.instructions[0xEA] = lambda: self.LD_a16_X(self.A)               # 0xEA = LD (a16), A
         self.instructions[0xF0] = lambda: self.LD_X_a8(self.A)                # 0xF0 = LD A, (a8)
         self.instructions[0xF2] = lambda: self.LD_X_addr_FF00(self.C, self.A) # 0xF2 = LD A, (C)
+        self.instructions[0xF8] = lambda: self.LD_XX_XX_s8(self.HL, self.SP)  # 0xF8 = LD HL, SP+s8
         self.instructions[0xFA] = lambda: self.LD_X_a16(self.A)               # 0xFA = LD A, (a16)
 
         # define 0xCB?? instructions
@@ -493,14 +506,20 @@ class GameBoy:
         orig = register.get()
         return uint16(self.memory[orig + delta] | (int(self.memory[orig + delta + 1]) << 8))
 
-    # push 16-bit value onto stack
-    def push_16(self, value):
-        sp = int(self.SP.get())
-        sp = (sp - 1) & 0xFFFF
-        self.memory[sp] = (value >> 8) & 0xFF
-        sp = (sp - 1) & 0xFFFF
-        self.memory[sp] = value & 0xFF
-        self.SP.set(sp)
+    # pop value from stack to register
+    def POP(self, register):
+        sp_orig = self.SP.get()
+        register.set(int(self.memory[sp_orig]) | (int(self.memory[sp_orig + 1]) << 8))
+        self.SP.set(sp_orig + 2)
+        return 1, 3
+
+    # push value from register onto stack
+    def PUSH(self, value):
+        sp_orig = self.SP.get()
+        self.memory[sp_orig - 1] = uint8((value >> 8) & 0xFF)
+        self.memory[sp_orig - 2] = uint8(value & 0xFF)
+        self.SP.set(sp_orig - 2)
+        return 1, 4
 
     # service one pending interrupt if possible
     def service_interrupts(self):
@@ -519,7 +538,7 @@ class GameBoy:
             if pending & mask:
                 self.ime = False
                 self.memory[0xFF0F] = interrupt_flags & (~mask & 0xFF)
-                self.push_16(int(self.PC.get()))
+                self.PUSH(self.PC.get())
                 self.PC.set(vector)
                 return 5  # interrupt servicing costs 5 M-cycles
         return 0
@@ -579,6 +598,23 @@ class GameBoy:
     def LD_XX_d16(self, register):
         register.set(self.read_16(self.PC))
         return 3, 3
+
+    # 0xF8
+    def LD_XX_XX_s8(self, register_store, register_other):
+        ro_orig = int(register_other.get())
+        delta = int(int8(self.read_8(self.PC)))
+        self.reset_flag_Z()
+        self.reset_flag_N()
+        if (ro_orig & 0x0F) + (delta & 0x0F) > 0x0F:
+            self.set_flag_H()
+        else:
+            self.reset_flag_H()
+        if (ro_orig & 0xFF) + (delta & 0xFF) > 0xFF:
+            self.set_flag_C()
+        else:
+            self.reset_flag_C()
+        register_store.set(ro_orig + delta)
+        return 2, 3
 
     # 0xE0
     def LD_a8_X(self, register):
@@ -933,7 +969,7 @@ class GameBoy:
     # 0xC4, 0xCC, 0xCD, 0xD4, 0xDC
     def CALL_a16(self, condition):
         if condition:
-            self.push_16(self.PC.get() + 3)
+            self.PUSH(self.PC.get() + 3)
             self.PC.set(self.read_16(self.PC))
             return 0, 6 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
