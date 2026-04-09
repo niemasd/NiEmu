@@ -649,6 +649,7 @@ class GameBoy:
             self.set_flag_Z()
         else:
             self.reset_flag_Z()
+        register_store.set(result)
         self.reset_flag_N()
         self.set_flag_H()
         self.reset_flag_C()
@@ -673,6 +674,19 @@ class GameBoy:
         else:
             return 1, 1
 
+    # 0xEE
+    def XOR_d8(self, register_store):
+        result = register_store.get() ^ self.read_PC_8()
+        register_store.set(result)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        self.reset_flag_H()
+        self.reset_flag_C()
+        return 2, 2
+
     # 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7
     def OR(self, register_store, register_other, addr=False):
         if addr:
@@ -691,6 +705,19 @@ class GameBoy:
             return 1, 2
         else:
             return 1, 1
+
+    # 0xF6
+    def OR_d8(self, register_store):
+        result = register_store.get() | self.read_PC_8()
+        register_store.set(result)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        self.reset_flag_H()
+        self.reset_flag_C()
+        return 2, 2
 
     # 0x18, 0x20, 0x28, 0x30, 0x38
     def JR_s8(self, condition):
