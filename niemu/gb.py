@@ -213,25 +213,6 @@ class GameBoy:
         self.instructions[0x75] = lambda: self.LD_addr_X(self.L, self.HL,  0) # 0x75 = LD (HL), L
         self.instructions[0x77] = lambda: self.LD_addr_X(self.A, self.HL,  0) # 0x77 = LD (HL), A
 
-        # define LD (?), ? instructions
-        self.instructions[0xE2] = lambda: self.LD_addr_X_FF00(self.A, self.C) # 0xE2 = LD (C), A
-
-        # define LD ?, (??) instructions
-        self.instructions[0x0A] = lambda: self.LD_X_addr(self.BC, self.A,  0) # 0x0A = LD A, (BC)
-        self.instructions[0x1A] = lambda: self.LD_X_addr(self.DE, self.A,  0) # 0x1A = LD A, (DE)
-        self.instructions[0x2A] = lambda: self.LD_X_addr(self.HL, self.A,  1) # 0x2A = LD A, (HL+)
-        self.instructions[0x3A] = lambda: self.LD_X_addr(self.HL, self.A, -1) # 0x3A = LD A, (HL-)
-        self.instructions[0x46] = lambda: self.LD_X_addr(self.HL, self.B,  0) # 0x46 = LD B, (HL)
-        self.instructions[0x4E] = lambda: self.LD_X_addr(self.HL, self.C,  0) # 0x4E = LD C, (HL)
-        self.instructions[0x56] = lambda: self.LD_X_addr(self.HL, self.D,  0) # 0x56 = LD D, (HL)
-        self.instructions[0x5E] = lambda: self.LD_X_addr(self.HL, self.E,  0) # 0x5E = LD E, (HL)
-        self.instructions[0x66] = lambda: self.LD_X_addr(self.HL, self.H,  0) # 0x66 = LD H, (HL)
-        self.instructions[0x6E] = lambda: self.LD_X_addr(self.HL, self.L,  0) # 0x6E = LD L, (HL)
-        self.instructions[0x7E] = lambda: self.LD_X_addr(self.HL, self.A,  0) # 0x7E = LD A, (HL)
-
-        # define LD ?, (?) instructions
-        self.instructions[0xF2] = lambda: self.LD_X_addr_FF00(self.C, self.A) # 0xF2 = LD A, (C)
-
         # define INC ?? instructions
         self.instructions[0x03] = lambda: self.INC_XX(self.BC) # 0x03 = INC BC
         self.instructions[0x13] = lambda: self.INC_XX(self.DE) # 0x13 = INC DE
@@ -268,18 +249,31 @@ class GameBoy:
         self.instructions[0x3E] = lambda: self.LD_X_d8(self.A)     # 0x3E = LD A, d8
         self.instructions[0x36] = lambda: self.LD_addr_d8(self.HL) # 0x36 = LD (HL), d8
 
+        # define ADD ??, ?? instructions
+        self.instructions[0x09] = lambda: self.ADD_XX_XX(self.HL, self.BC) # 0x09 = ADD HL, BC
+        self.instructions[0x19] = lambda: self.ADD_XX_XX(self.HL, self.DE) # 0x19 = ADD HL, DE
+        self.instructions[0x29] = lambda: self.ADD_XX_XX(self.HL, self.HL) # 0x29 = ADD HL, HL
+        self.instructions[0x39] = lambda: self.ADD_XX_XX(self.HL, self.SP) # 0x39 = ADD HL, SP
+
+        # define LD ?, (??) instructions
+        self.instructions[0x0A] = lambda: self.LD_X_addr(self.BC, self.A,  0) # 0x0A = LD A, (BC)
+        self.instructions[0x1A] = lambda: self.LD_X_addr(self.DE, self.A,  0) # 0x1A = LD A, (DE)
+        self.instructions[0x2A] = lambda: self.LD_X_addr(self.HL, self.A,  1) # 0x2A = LD A, (HL+)
+        self.instructions[0x3A] = lambda: self.LD_X_addr(self.HL, self.A, -1) # 0x3A = LD A, (HL-)
+        self.instructions[0x46] = lambda: self.LD_X_addr(self.HL, self.B,  0) # 0x46 = LD B, (HL)
+        self.instructions[0x4E] = lambda: self.LD_X_addr(self.HL, self.C,  0) # 0x4E = LD C, (HL)
+        self.instructions[0x56] = lambda: self.LD_X_addr(self.HL, self.D,  0) # 0x56 = LD D, (HL)
+        self.instructions[0x5E] = lambda: self.LD_X_addr(self.HL, self.E,  0) # 0x5E = LD E, (HL)
+        self.instructions[0x66] = lambda: self.LD_X_addr(self.HL, self.H,  0) # 0x66 = LD H, (HL)
+        self.instructions[0x6E] = lambda: self.LD_X_addr(self.HL, self.L,  0) # 0x6E = LD L, (HL)
+        self.instructions[0x7E] = lambda: self.LD_X_addr(self.HL, self.A,  0) # 0x7E = LD A, (HL)
+
         # define JR instructions
         self.instructions[0x18] = lambda: self.JR_s8(True)                  # 0x18 = JR s8
         self.instructions[0x20] = lambda: self.JR_s8(not self.get_flag_Z()) # 0x20 = JR NZ, s8
         self.instructions[0x28] = lambda: self.JR_s8(self.get_flag_Z())     # 0x28 = JR Z, s8
         self.instructions[0x30] = lambda: self.JR_s8(not self.get_flag_C()) # 0x30 = JR NC, s8
         self.instructions[0x38] = lambda: self.JR_s8(self.get_flag_C())     # 0x38 = JR C, s8
-
-        # define ADD ??, ?? instructions
-        self.instructions[0x09] = lambda: self.ADD_XX_XX(self.HL, self.BC) # 0x09 = ADD HL, BC
-        self.instructions[0x19] = lambda: self.ADD_XX_XX(self.HL, self.DE) # 0x19 = ADD HL, DE
-        self.instructions[0x29] = lambda: self.ADD_XX_XX(self.HL, self.HL) # 0x29 = ADD HL, HL
-        self.instructions[0x39] = lambda: self.ADD_XX_XX(self.HL, self.SP) # 0x39 = ADD HL, SP
 
         # define ADD ?, ? instructions
         self.instructions[0x80] = lambda: self.ADD_X_X(self.A, self.B)             # 0x80 = ADD A, B
@@ -377,11 +371,20 @@ class GameBoy:
         self.instructions[0xDA] = lambda: self.JP_a16(self.get_flag_C())     # 0xDA = JP C, a16
         self.instructions[0xE9] = self.JP_HL                                 # 0xE9 = JP HL
 
+        # define CALL instructions
+        self.instructions[0xC4] = lambda: self.CALL_a16(not self.get_flag_Z()) # 0xC4 = CALL NZ, a16
+        self.instructions[0xCC] = lambda: self.CALL_a16(self.get_flag_Z())     # 0xCC = CALL Z, a16
+        self.instructions[0xCD] = lambda: self.CALL_a16(True)                  # 0xCD = CALL a16
+        self.instructions[0xD4] = lambda: self.CALL_a16(not self.get_flag_C()) # 0xD4 = CALL NC, a16
+        self.instructions[0xDC] = lambda: self.CALL_a16(self.get_flag_C())     # 0xDC = CALL C, a16
+
         # define additional LD operations
-        self.instructions[0xE0] = lambda: self.LD_a8_X (self.A) # 0xE0 = LD (a8), A
-        self.instructions[0xEA] = lambda: self.LD_a16_X(self.A) # 0xEA = LD (a16), A
-        self.instructions[0xF0] = lambda: self.LD_X_a8 (self.A) # 0xF0 = LD A, (a8)
-        self.instructions[0xFA] = lambda: self.LD_X_a16(self.A) # 0xFA = LD A, (a16)
+        self.instructions[0xE0] = lambda: self.LD_a8_X(self.A)                # 0xE0 = LD (a8), A
+        self.instructions[0xE2] = lambda: self.LD_addr_X_FF00(self.A, self.C) # 0xE2 = LD (C), A
+        self.instructions[0xEA] = lambda: self.LD_a16_X(self.A)               # 0xEA = LD (a16), A
+        self.instructions[0xF0] = lambda: self.LD_X_a8(self.A)                # 0xF0 = LD A, (a8)
+        self.instructions[0xF2] = lambda: self.LD_X_addr_FF00(self.C, self.A) # 0xF2 = LD A, (C)
+        self.instructions[0xFA] = lambda: self.LD_X_a16(self.A)               # 0xFA = LD A, (a16)
 
         # define 0xCB?? instructions
         pass # TODO
@@ -851,6 +854,15 @@ class GameBoy:
     def JP_HL(self):
         self.PC.set(self.HL.get())
         return 0, 1 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
+
+    # 0xC4, 0xCC, 0xCD, 0xD4, 0xDC
+    def CALL_a16(self, condition):
+        if condition:
+            self.push_16(self.PC.get() + 3)
+            self.PC.set(self.read_PC_16())
+            return 0, 6 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
+        else:
+            return 3, 3
 
     # load a game
     def load_game(self, path):
