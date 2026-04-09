@@ -552,7 +552,7 @@ class GameBoy:
         self.interrupt_master_enable = value
         return 1, 1
 
-    # 0x40, TODO
+    # 0x40-0x45, 0x47-0x4D, 0x4F-0x55, 0x57-0x5D, 0x5F-0x65, 0x67-0x6D, 0x6F, 0x78-0x7D, 0x7F
     def LD_X_X(self, register_store, register_other):
         register_store.set(register_other.get())
         return 1, 1
@@ -930,6 +930,8 @@ class GameBoy:
             return 0, 6 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
             return 3, 3
+
+    # 0xTODO
 
     # load a game
     def load_game(self, path):
