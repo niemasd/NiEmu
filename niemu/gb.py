@@ -283,6 +283,16 @@ class GameBoy:
         self.instructions[0xB7] = lambda: self.OR(self.A, self.A)             # 0xB7 = OR A
         self.instructions[0xB6] = lambda: self.OR(self.A, self.HL, addr=True) # 0xB6 = OR (HL)
 
+        # define CP ? instructions
+        self.instructions[0xB8] = lambda: self.SUB_X_X(self.A, self.B, store=False)             # 0xB8 = CP B
+        self.instructions[0xB9] = lambda: self.SUB_X_X(self.A, self.C, store=False)             # 0xB9 = CB C
+        self.instructions[0xBA] = lambda: self.SUB_X_X(self.A, self.D, store=False)             # 0xBA = CB D
+        self.instructions[0xBB] = lambda: self.SUB_X_X(self.A, self.E, store=False)             # 0xBB = CB E
+        self.instructions[0xBC] = lambda: self.SUB_X_X(self.A, self.H, store=False)             # 0xBC = CB H
+        self.instructions[0xBD] = lambda: self.SUB_X_X(self.A, self.L, store=False)             # 0xBD = CB L
+        self.instructions[0xBF] = lambda: self.SUB_X_X(self.A, self.A, store=False)             # 0xBF = CB A
+        self.instructions[0xBE] = lambda: self.SUB_X_X(self.A, self.HL, store=False, addr=True) # 0xBE = CB (HL)
+
         # define JP instructions
         self.instructions[0xC2] = lambda: self.JP_a16(not self.get_flag_Z()) # 0xC2 = JP NZ, a16
         self.instructions[0xC3] = lambda: self.JP_a16(True)                  # 0xC3 = JP a16
@@ -530,7 +540,7 @@ class GameBoy:
             return 1, 1
 
     # 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F
-    def SUB_X_X(self, register_store, register_other, addr=False, carry=False):
+    def SUB_X_X(self, register_store, register_other, store=True, addr=False, carry=False):
         rs_orig = int(register_store.get())
         ro_orig = int(register_other.get())
         if addr:
@@ -553,7 +563,8 @@ class GameBoy:
             self.set_flag_C()
         else:
             self.reset_flag_C()
-        register_store.set(result & 0xFF)
+        if store:
+            register_store.set(result & 0xFF)
         if addr:
             return 1, 2
         else:
