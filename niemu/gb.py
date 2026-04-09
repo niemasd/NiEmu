@@ -214,13 +214,14 @@ class GameBoy:
         self.instructions[0x39] = lambda: self.ADD_XX_XX(self.HL, self.SP) # 0x39 = ADD HL, SP
 
         # define ADD ?, ? instructions
-        self.instructions[0x80] = lambda: self.ADD_X_X(self.A, self.B) # 0x80 = ADD A, B
-        self.instructions[0x81] = lambda: self.ADD_X_X(self.A, self.C) # 0x81 = ADD A, C
-        self.instructions[0x82] = lambda: self.ADD_X_X(self.A, self.D) # 0x82 = ADD A, D
-        self.instructions[0x83] = lambda: self.ADD_X_X(self.A, self.E) # 0x83 = ADD A, E
-        self.instructions[0x84] = lambda: self.ADD_X_X(self.A, self.H) # 0x84 = ADD A, H
-        self.instructions[0x85] = lambda: self.ADD_X_X(self.A, self.L) # 0x85 = ADD A, L
-        self.instructions[0x87] = lambda: self.ADD_X_X(self.A, self.A) # 0x87 = ADD A, A
+        self.instructions[0x80] = lambda: self.ADD_X_X(self.A, self.B)             # 0x80 = ADD A, B
+        self.instructions[0x81] = lambda: self.ADD_X_X(self.A, self.C)             # 0x81 = ADD A, C
+        self.instructions[0x82] = lambda: self.ADD_X_X(self.A, self.D)             # 0x82 = ADD A, D
+        self.instructions[0x83] = lambda: self.ADD_X_X(self.A, self.E)             # 0x83 = ADD A, E
+        self.instructions[0x84] = lambda: self.ADD_X_X(self.A, self.H)             # 0x84 = ADD A, H
+        self.instructions[0x85] = lambda: self.ADD_X_X(self.A, self.L)             # 0x85 = ADD A, L
+        self.instructions[0x87] = lambda: self.ADD_X_X(self.A, self.A)             # 0x87 = ADD A, A
+        self.instructions[0x86] = lambda: self.ADD_X_X(self.A, self.HL, addr=True) # 0x86 = ADD A, (HL)
 
         # define ADC ?, ? instructions
         self.instructions[0x88] = lambda: self.ADD_X_X(self.A, self.B, carry=True) # 0x88 = ADC A, B
@@ -250,14 +251,14 @@ class GameBoy:
         self.instructions[0x9F] = lambda: self.SBC_X_X(self.A, self.A, carry=True) # 0x9F = SBC A, A
 
         # define XOR ? instructions
-        self.instructions[0xA8] = lambda: self.XOR(self.A, self.B)       # 0xA8 = XOR B
-        self.instructions[0xA9] = lambda: self.XOR(self.A, self.C)       # 0xA9 = XOR C
-        self.instructions[0xAA] = lambda: self.XOR(self.A, self.D)       # 0xAA = XOR D
-        self.instructions[0xAB] = lambda: self.XOR(self.A, self.E)       # 0xAB = XOR E
-        self.instructions[0xAC] = lambda: self.XOR(self.A, self.H)       # 0xAC = XOR H
-        self.instructions[0xAD] = lambda: self.XOR(self.A, self.L)       # 0xAD = XOR L
-        self.instructions[0xAF] = lambda: self.XOR(self.A, self.A)       # 0xAF = XOR A
-        self.instructions[0xAE] = lambda: self.XOR_addr(self.A, self.HL) # 0xAE = XOR (HL)
+        self.instructions[0xA8] = lambda: self.XOR(self.A, self.B)             # 0xA8 = XOR B
+        self.instructions[0xA9] = lambda: self.XOR(self.A, self.C)             # 0xA9 = XOR C
+        self.instructions[0xAA] = lambda: self.XOR(self.A, self.D)             # 0xAA = XOR D
+        self.instructions[0xAB] = lambda: self.XOR(self.A, self.E)             # 0xAB = XOR E
+        self.instructions[0xAC] = lambda: self.XOR(self.A, self.H)             # 0xAC = XOR H
+        self.instructions[0xAD] = lambda: self.XOR(self.A, self.L)             # 0xAD = XOR L
+        self.instructions[0xAF] = lambda: self.XOR(self.A, self.A)             # 0xAF = XOR A
+        self.instructions[0xAE] = lambda: self.XOR(self.A, self.HL, addr=True) # 0xAE = XOR (HL)
 
         # define JP instructions
         self.instructions[0xC2] = lambda: self.JP_a16(not self.get_flag_Z()) # 0xC2 = JP NZ, a16
@@ -478,9 +479,11 @@ class GameBoy:
         return 1, 2
 
     # 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8F
-    def ADD_X_X(self, register_store, register_other, carry=False):
+    def ADD_X_X(self, register_store, register_other, addr=False, carry=False):
         rs_orig = register_store.get()
         ro_orig = register_other.get()
+        if addr:
+            ro_orig = self.memory[ro_orig]
         result = rs_orig + ro_orig
         if carry and self.get_flag_C():
             result += 1
@@ -498,7 +501,10 @@ class GameBoy:
         else:
             self.reset_flag_C()
         register_store.set(result & 0xFF)
-        return 1, 1
+        if addr:
+            return 1, 2
+        else:
+            return 1, 1
 
     # 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x97, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9F
     def SUB_X_X(self, register_store, register_other, carry=False):
@@ -525,9 +531,12 @@ class GameBoy:
         register_store.set(result & 0xFF)
         return 1, 1
 
-    # 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAF
-    def XOR(self, register_store, register_other):
-        result = register_store.get() ^ register_other.get()
+    # 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF
+    def XOR(self, register_store, register_other, addr=False):
+        if addr:
+            result = register_store.get() ^ self.memory[register_other_address.get()]
+        else:
+            result = register_store.get() ^ register_other.get()
         register_store.set(result)
         if result == 0:
             self.set_flag_Z()
@@ -536,20 +545,10 @@ class GameBoy:
         self.reset_flag_N()
         self.reset_flag_H()
         self.reset_flag_C()
-        return 1, 1
-
-    # 0xAE
-    def XOR_addr(self, register_store, register_other_address):
-        result = register_store.get() ^ self.memory[register_other_address.get()]
-        register_store.set(result)
-        if result == 0:
-            self.set_flag_Z()
+        if addr:
+            return 1, 2
         else:
-            self.reset_flag_Z()
-        self.reset_flag_N()
-        self.reset_flag_H()
-        self.reset_flag_C()
-        return 1, 2
+            return 1, 1
 
     # 0x18, 0x20, 0x28, 0x30, 0x38
     def JR_s8(self, condition):
