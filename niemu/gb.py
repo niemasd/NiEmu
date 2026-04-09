@@ -224,13 +224,14 @@ class GameBoy:
         self.instructions[0x86] = lambda: self.ADD_X_X(self.A, self.HL, addr=True) # 0x86 = ADD A, (HL)
 
         # define ADC ?, ? instructions
-        self.instructions[0x88] = lambda: self.ADD_X_X(self.A, self.B, carry=True) # 0x88 = ADC A, B
-        self.instructions[0x89] = lambda: self.ADD_X_X(self.A, self.C, carry=True) # 0x89 = ADC A, C
-        self.instructions[0x8A] = lambda: self.ADD_X_X(self.A, self.D, carry=True) # 0x8A = ADC A, D
-        self.instructions[0x8B] = lambda: self.ADD_X_X(self.A, self.E, carry=True) # 0x8B = ADC A, E
-        self.instructions[0x8C] = lambda: self.ADD_X_X(self.A, self.H, carry=True) # 0x8C = ADC A, H
-        self.instructions[0x8D] = lambda: self.ADD_X_X(self.A, self.L, carry=True) # 0x8D = ADC A, L
-        self.instructions[0x8F] = lambda: self.ADD_X_X(self.A, self.A, carry=True) # 0x8F = ADC A, A
+        self.instructions[0x88] = lambda: self.ADD_X_X(self.A, self.B, carry=True)             # 0x88 = ADC A, B
+        self.instructions[0x89] = lambda: self.ADD_X_X(self.A, self.C, carry=True)             # 0x89 = ADC A, C
+        self.instructions[0x8A] = lambda: self.ADD_X_X(self.A, self.D, carry=True)             # 0x8A = ADC A, D
+        self.instructions[0x8B] = lambda: self.ADD_X_X(self.A, self.E, carry=True)             # 0x8B = ADC A, E
+        self.instructions[0x8C] = lambda: self.ADD_X_X(self.A, self.H, carry=True)             # 0x8C = ADC A, H
+        self.instructions[0x8D] = lambda: self.ADD_X_X(self.A, self.L, carry=True)             # 0x8D = ADC A, L
+        self.instructions[0x8F] = lambda: self.ADD_X_X(self.A, self.A, carry=True)             # 0x8F = ADC A, A
+        self.instructions[0x8E] = lambda: self.ADD_X_X(self.A, self.HL, addr=True, carry=True) # 0x8E = ADC A, (HL)
 
         # define SUB ?, ? instructions
         self.instructions[0x90] = lambda: self.SUB_X_X(self.A, self.B) # 0x90 = SUB A, B
