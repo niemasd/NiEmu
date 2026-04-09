@@ -253,6 +253,16 @@ class GameBoy:
         self.instructions[0x9F] = lambda: self.SUB_X_X(self.A, self.A, carry=True)             # 0x9F = SBC A, A
         self.instructions[0x9E] = lambda: self.SUB_X_X(self.A, self.HL, addr=True, carry=True) # 0x9E = SBC A, (HL)
 
+        # define AND ? instructions
+        self.instructions[0xA0] = lambda: self.AND(self.A, self.B)             # 0xA0 = AND B
+        self.instructions[0xA1] = lambda: self.AND(self.A, self.C)             # 0xA1 = AND C
+        self.instructions[0xA2] = lambda: self.AND(self.A, self.D)             # 0xA2 = AND D
+        self.instructions[0xA3] = lambda: self.AND(self.A, self.E)             # 0xA3 = AND E
+        self.instructions[0xA4] = lambda: self.AND(self.A, self.H)             # 0xA4 = AND H
+        self.instructions[0xA5] = lambda: self.AND(self.A, self.L)             # 0xA5 = AND L
+        self.instructions[0xA7] = lambda: self.AND(self.A, self.A)             # 0xA7 = AND A
+        self.instructions[0xA6] = lambda: self.AND(self.A, self.HL, addr=True) # 0xA6 = AND (HL)
+
         # define XOR ? instructions
         self.instructions[0xA8] = lambda: self.XOR(self.A, self.B)             # 0xA8 = XOR B
         self.instructions[0xA9] = lambda: self.XOR(self.A, self.C)             # 0xA9 = XOR C
@@ -534,6 +544,25 @@ class GameBoy:
         else:
             self.reset_flag_C()
         register_store.set(result & 0xFF)
+        if addr:
+            return 1, 2
+        else:
+            return 1, 1
+
+    # 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7
+    def AND(self, register_store, register_other, addr=False):
+        if addr:
+            result = register_store.get() & self.memory[register_other_address.get()]
+        else:
+            result = register_store.get() & register_other.get()
+        register_store.set(result)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        self.set_flag_H()
+        self.reset_flag_C()
         if addr:
             return 1, 2
         else:
