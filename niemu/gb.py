@@ -1241,7 +1241,8 @@ class GameBoy:
 
     # 0xCB36
     def SWAP_addr(self, register_address):
-        orig = int(self.memory[register_address.get()])
+        address = register_address.get()
+        orig = int(self.memory[address])
         result = (orig << 4) | (orig >> 4)
         if result == 0:
             self.set_flag_Z()
@@ -1250,7 +1251,7 @@ class GameBoy:
         self.reset_flag_N()
         self.reset_flag_H()
         self.reset_flag_C()
-        register.set(result)
+        self.memory[address] = result
         return 2, 4
 
     # 0xCB40-0xCB45, 0xCB47-0xCB4D, 0xCB4F-0xCB55, 0xCB57-0xCB5D, 0xCB5F-0xCB65, 0xCB67-0xCB6D, 0xCB6F-0xCB75, 0xCB77-0xCB7D, 0xCB7F
