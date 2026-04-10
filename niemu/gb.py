@@ -1420,7 +1420,7 @@ class GameBoy:
                 # DEBUG TODO
                 trace_pc = int(self.PC.get())
                 trace_op = int(self.memory[trace_pc])
-                #print(f"PC={trace_pc:04X} OP={trace_op:02X} A={int(self.A.get()):02X} F={int(self.F.get()):02X} BC={int(self.BC.get()):04X} DE={int(self.DE.get()):04X} HL={int(self.HL.get()):04X} SP={int(self.SP.get()):04X}")
+                print(f"PC={trace_pc:04X} OP={trace_op:02X} A={int(self.A.get()):02X} F={int(self.F.get()):02X} BC={int(self.BC.get()):04X} DE={int(self.DE.get()):04X} HL={int(self.HL.get()):04X} SP={int(self.SP.get()):04X}")
 
                 # rest of logic
                 pc_orig = self.PC.get()
