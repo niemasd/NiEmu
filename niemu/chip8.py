@@ -1,9 +1,6 @@
 #! /usr/bin/env python3
 '''
 CHIP-8 Emulator
-
-https://austinmorlan.com/posts/chip8_emulator
-https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter
 '''
 
 # imports
