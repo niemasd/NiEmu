@@ -535,7 +535,7 @@ class GameBoy:
     def RST(self, address):
         self.PUSH(self.PC.get())
         self.PC.set(address)
-        return 1, 4
+        return 0, 4 # # moves PC, so return 0 bytes (to not move PC again in emulation loop)
 
     # service one pending interrupt if possible
     def service_interrupts(self):
@@ -998,7 +998,7 @@ class GameBoy:
             self.SP.add(2)
             if ime:
                 self.ime = True
-            return 1, num_cycles
+            return 0, num_cycles # # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
             return 1, 2
 
