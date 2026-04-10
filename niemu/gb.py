@@ -273,7 +273,7 @@ class GameBoy:
         self.enable_ime_after_next_instruction = False
         self.just_executed_ei = False
         self.is_halted = False
-        self.is_stopped = False
+        #self.is_stopped = False
         self.halt_bug = False
 
         # 8-bit registers
@@ -963,7 +963,7 @@ class GameBoy:
 
     # 0x10
     def STOP(self):
-        self.is_stopped = True
+        #self.is_stopped = True
         return 2, 1
 
     # 0x37
@@ -1510,8 +1510,10 @@ class GameBoy:
                 if (event.type == pygame.QUIT) or ((event.type == pygame.KEYDOWN) and (event.key == pygame.K_ESCAPE)):
                     running = False
                     break
+                '''
                 if event.type == pygame.KEYDOWN:
                     self.is_stopped = False
+                '''
             pressed = pygame.key.get_pressed()
             pass # TODO PARSE PRESSED KEYS
 
@@ -1533,11 +1535,13 @@ class GameBoy:
                     continue
 
                 # handle CPU stop
+                '''
                 if self.is_stopped:
                     num_m_cycles = 1
                     self.ppu.step(num_m_cycles)
                     m_cycles_remaining -= num_m_cycles
                     continue
+                '''
 
                 # rest of logic
                 pc_orig = self.PC.get()
