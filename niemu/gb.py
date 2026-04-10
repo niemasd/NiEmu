@@ -181,12 +181,63 @@ class GameBoy:
 
         # memory, PPU, and other key variables
         self.memory = Memory(0x10000)
-        self.memory[0xFF0F] = 0xE1 # IF
-        self.memory[0xFFFF] = 0x00 # IE
         self.ppu = PPU(self.memory)
         self.cartridge = None
         self.instructions = [None]*0x100
         self.instructions[0xCB] = [None]*0x100
+
+        # post-boot memory defaults
+        self.memory[0xFF00:0xFF08] = [ # 0xFF00-0xFF07 = joypad, serial, timer
+            0xCF, # 0xFF00 = JOYP
+            0x00, # 0xFF01 = SB
+            0x7E, # 0xFF02 = SC
+            0x00, # 0xFF03 = unused
+            0xAB, # 0xFF04 = DIV
+            0x00, # 0xFF05 = TIMA
+            0x00, # 0xFF06 = TMA
+            0xF8, # 0xFF07 = TAC
+        ]
+        self.memory[0xFF0F] = 0xE1 # 0xFF0F = interrupt flags
+        self.memory[0xFF10:0xFF27] = [ # 0xFF10-0xFF26 = sound
+            0x80, # 0xFF10 = NR10
+            0xBF, # 0xFF11 = NR11
+            0xF3, # 0xFF12 = NR12
+            0x00, # 0xFF13 = NR13
+            0xBF, # 0xFF14 = NR14
+            0x3F, # 0xFF15 = unused/NR20
+            0x3F, # 0xFF16 = NR21
+            0x00, # 0xFF17 = NR22
+            0x00, # 0xFF18 = NR23
+            0xBF, # 0xFF19 = NR24
+            0x7F, # 0xFF1A = NR30
+            0xFF, # 0xFF1B = NR31
+            0x9F, # 0xFF1C = NR32
+            0x00, # 0xFF1D = NR33
+            0xBF, # 0xFF1E = NR34
+            0xFF, # 0xFF1F = unused/NR40
+            0xFF, # 0xFF20 = NR41
+            0x00, # 0xFF21 = NR42
+            0x00, # 0xFF22 = NR43
+            0xBF, # 0xFF23 = NR44
+            0x77, # 0xFF24 = NR50
+            0xF3, # 0xFF25 = NR51
+            0xF1, # 0xFF26 = NR52
+        ]
+        self.memory[0xFF40:0xFF4C] = [ # 0xFF40-0xFF4B = LCD/PPU
+            0x91, # 0xFF40 = LCDC
+            0x85, # 0xFF41 = STAT
+            0x00, # 0xFF42 = SCY
+            0x00, # 0xFF43 = SCX
+            0x00, # 0xFF44 = LY
+            0x00, # 0xFF45 = LYC
+            0x00, # 0xFF46 = DMA
+            0xFC, # 0xFF47 = BGP
+            0xFF, # 0xFF48 = OBP0
+            0xFF, # 0xFF49 = OBP1
+            0x00, # 0xFF4A = WY
+            0x00, # 0xFF4B = WX
+        ]
+        self.memory[0xFFFF] = 0x00 # 0xFFFF = interrupt enable
 
         ### define single-byte opcode instructions ###
         # define special instructions
