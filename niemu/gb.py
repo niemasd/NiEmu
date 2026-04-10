@@ -155,8 +155,11 @@ class GameBoy:
     def __init__(self):
         # CPU flags
         self.ime = False
+        self.enable_ime_after_next_instruction = False
+        self.just_executed_ei = False
         self.is_halted = False
         self.is_stopped = False
+        self.halt_bug = False
 
         # 8-bit registers
         self.A = Register8(0x01)
@@ -187,13 +190,13 @@ class GameBoy:
 
         ### define single-byte opcode instructions ###
         # define special instructions
-        self.instructions[0x00] = self.NOP                    # 0x00 = NOP
-        self.instructions[0x10] = self.STOP                   # 0x10 = STOP
-        self.instructions[0x37] = self.SCF                    # 0x37 = SCF
-        self.instructions[0x3F] = self.CCF                    # 0x3F = CCF
-        self.instructions[0x76] = self.HALT                   # 0x76 = HALT
-        self.instructions[0xF3] = lambda: self.set_IME(False) # 0xF3 = DI
-        self.instructions[0xFB] = lambda: self.set_IME(True)  # 0xFB = EI
+        self.instructions[0x00] = self.NOP  # 0x00 = NOP
+        self.instructions[0x10] = self.STOP # 0x10 = STOP
+        self.instructions[0x37] = self.SCF  # 0x37 = SCF
+        self.instructions[0x3F] = self.CCF  # 0x3F = CCF
+        self.instructions[0x76] = self.HALT # 0x76 = HALT
+        self.instructions[0xF3] = self.DI   # 0xF3 = DI
+        self.instructions[0xFB] = self.EI   # 0xFB = EI
 
         # define LD ??, d16 instructions
         self.instructions[0x01] = lambda: self.LD_XX_d16(self.BC) # 0x01 = LD BC, d16
@@ -732,6 +735,19 @@ class GameBoy:
         orig = int(register.get())
         return uint16(self.memory[orig + delta] | (int(self.memory[orig + delta + 1]) << 8))
 
+    # 0xF3
+    def DI(self):
+        self.ime = False
+        self.enable_ime_after_next_instruction = False
+        self.just_executed_ei = False
+        return 1, 1
+
+    # 0xFB
+    def EI(self):
+        self.enable_ime_after_next_instruction = True
+        self.just_executed_ei = True
+        return 1, 1
+
     # pop value from stack to register
     def POP(self, register):
         sp_orig = int(self.SP.get())
@@ -803,12 +819,11 @@ class GameBoy:
 
     # 0x76
     def HALT(self):
-        self.is_halted = True
-        return 1, 1
-
-    # 0xF3, 0xFB
-    def set_IME(self, value):
-        self.ime = value
+        pending = int(self.memory[0xFFFF]) & int(self.memory[0xFF0F]) & 0x1F
+        if (not self.ime) and pending:
+            self.halt_bug = True
+        else:
+            self.is_halted = True
         return 1, 1
 
     # 0x40-0x45, 0x47-0x4D, 0x4F-0x55, 0x57-0x5D, 0x5F-0x65, 0x67-0x6D, 0x6F, 0x78-0x7D, 0x7F
@@ -1325,6 +1340,8 @@ class GameBoy:
                 if (event.type == pygame.QUIT) or ((event.type == pygame.KEYDOWN) and (event.key == pygame.K_ESCAPE)):
                     running = False
                     break
+                if event.type == pygame.KEYDOWN:
+                    self.is_stopped = False
             pressed = pygame.key.get_pressed()
             pass # TODO PARSE PRESSED KEYS
 
@@ -1340,6 +1357,13 @@ class GameBoy:
 
                 # handle CPU halt
                 if self.is_halted:
+                    num_m_cycles = 1
+                    self.ppu.step(num_m_cycles)
+                    m_cycles_remaining -= num_m_cycles
+                    continue
+
+                # handle CPU stop
+                if self.is_stopped:
                     num_m_cycles = 1
                     self.ppu.step(num_m_cycles)
                     m_cycles_remaining -= num_m_cycles
@@ -1362,9 +1386,20 @@ class GameBoy:
                     except:
                         raise ValueError(f"Unknown opcode: 0x{opcode:02X}")
                 num_bytes, num_m_cycles = instruction_func()
-                self.PC.add(num_bytes)
+                if self.halt_bug:
+                    self.halt_bug = False
+                else:
+                    self.PC.add(num_bytes)
                 self.ppu.step(num_m_cycles)
                 m_cycles_remaining -= num_m_cycles
+
+                # handle IME
+                if self.enable_ime_after_next_instruction:
+                    if self.just_executed_ei:
+                        self.just_executed_ei = False
+                    else:
+                        self.ime = True
+                        self.enable_ime_after_next_instruction = False
 
             # update video
             self.ppu.render_frame(surface)
