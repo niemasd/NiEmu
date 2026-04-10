@@ -227,6 +227,14 @@ class RegisterF(Register8):
     def set(self, value):
         super().set(value & 0xF0) # keep lower 4 bits cleared
 
+# class to represent Nintendo Game Boy specific memory
+class MemoryGB(Memory):
+    def __setitem__(self, i, x):
+        super().__setitem__(i, x)
+        if i == 0xFF46:
+            source = int(x) << 8
+            self.data[0xFE00 : 0xFEA0] = self.data[source : source + 0xA0]
+
 # class to emulate Nintendo Game Boy
 class GameBoy:
     # initialize a GameBoy object
@@ -258,7 +266,7 @@ class GameBoy:
         self.HL = Register8Pair(self.H, self.L)
 
         # memory, PPU, and other key variables
-        self.memory = Memory(0x10000)
+        self.memory = MemoryGB(0x10000)
         self.ppu = PPU(self.memory)
         self.cartridge = None
         self.instructions = [None]*0x100
