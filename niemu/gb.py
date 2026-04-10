@@ -281,6 +281,9 @@ class GameBoy:
         self.instructions[0x30] = lambda: self.JR_s8(not self.get_flag_C()) # 0x30 = JR NC, s8
         self.instructions[0x38] = lambda: self.JR_s8(self.get_flag_C())     # 0x38 = JR C, s8
 
+        # define CPL instruction
+        self.instructions[0x2F] = lambda: self.CPL(self.A) # 0x2F = CPL
+
         # define LD ?, ? instructions
         self.instructions[0x40] = lambda: self.LD_X_X(self.B, self.B) # 0x40 = LD B, B
         self.instructions[0x41] = lambda: self.LD_X_X(self.B, self.C) # 0x41 = LD B, C
@@ -864,6 +867,13 @@ class GameBoy:
         if store:
             register_store.set(result & 0xFF)
         return 2, 2
+
+    # 0x2F
+    def CPL(self, register):
+        register.set(~register.get())
+        self.set_flag_N()
+        self.set_flag_H()
+        return 1, 1
 
     # 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7
     def AND(self, register_store, register_other, addr=False):
