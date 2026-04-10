@@ -1274,7 +1274,7 @@ class GameBoy:
     # 0xC4, 0xCC, 0xCD, 0xD4, 0xDC
     def CALL_a16(self, condition):
         if condition:
-            self.PUSH(self.PC.get() + 3)
+            self.PUSH(int(self.PC.get()) + 3)
             self.PC.set(self.read_16(self.PC))
             return 0, 6 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
