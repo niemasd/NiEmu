@@ -32,19 +32,36 @@ class PPU:
         self.memory = memory
         self.scanline_m_cycles = 0
 
-    # register helpers
+    # LCDC helpers
     def lcd_enabled(self):
-        return bool(self.memory[0xFF40] & 0x80)
+        return bool(int(self.memory[0xFF40]) & 0x80)
+    def window_tile_map_select(self):
+        return bool(int(self.memory[0xFF40]) & 0x40)
+    def window_enabled(self):
+        return bool(int(self.memory[0xFF40]) & 0x20)
+    def bg_window_tile_data_select(self):
+        return bool(int(self.memory[0xFF40]) & 0x10)
+    def bg_tile_map_select(self):
+        return bool(int(self.memory[0xFF40]) & 0x08)
+    def sprite_size_8x16(self):
+        return bool(int(self.memory[0xFF40]) & 0x04)
+    def sprites_enabled(self):
+        return bool(int(self.memory[0xFF40]) & 0x02)
     def bg_enabled(self):
-        return bool(self.memory[0xFF40] & 0x01)
+        return bool(int(self.memory[0xFF40]) & 0x01)
 
-    # convert til color ID (0, 1, 2, or 3) into RGB tuple
+    # palette helpers
     def get_bg_palette_color(self, color_id):
         bgp = int(self.memory[0xFF47])
         shade = (bgp >> (color_id * 2)) & 0b11
         return COLOR_PALETTE[shade]
+    def get_obj_palette_color(self, palette_num, color_id):
+        palette_addr = 0xFF49 if palette_num else 0xFF48 
+        obp = int(self.memory[palette_addr])
+        shade = (obp >> (color_id * 2)) & 0b11
+        return COLOR_PALETTE[shade]
 
-    # read one pixel from a tile
+    # tile helpers
     def get_tile_pixel(self, tile_addr, x, y):
         bit = 7 - x
         row_addr = tile_addr + (y * 2)
@@ -53,48 +70,117 @@ class PPU:
         lo_bit = (low >> bit) & 1
         hi_bit = (high >> bit) & 1
         return (hi_bit << 1) | lo_bit
-
-    # resolve background tile number to tile data address
-    def get_bg_tile_addr(self, tile_number):
-        lcdc = int(self.memory[0xFF40])
-        if lcdc & 0x10:
+    def get_bg_window_tile_addr(self, tile_number):
+        if self.bg_window_tile_data_select():
             return 0x8000 + (tile_number * 16)
-        else:
-            signed_tile_number = int(int8(tile_number))
-            return 0x9000 + (signed_tile_number * 16)
+        signed_tile_number = int(int8(tile_number))
+        return 0x9000 + (signed_tile_number * 16)
+    def get_sprite_tile_addr(self, tile_number):
+        return 0x8000 + (tile_number * 16)
 
-    # render scrolling background layer
-    def render_background(self, surface):
-        # set things up
-        if not self.lcd_enabled():
-            surface.fill(COLOR_WHITE)
-            return
+    # background/window pixel fetch
+    def get_bg_color_id_at(self, screen_x, screen_y):
         if not self.bg_enabled():
-            surface.fill(COLOR_WHITE)
-            return
-        lcdc = int(self.memory[0xFF40])
+            return 0
         scy = int(self.memory[0xFF42])
         scx = int(self.memory[0xFF43])
+        world_y = (screen_y + scy) & 0xFF
+        world_x = (screen_x + scx) & 0xFF
+        tile_y = world_y // 8
+        tile_x = world_x // 8
+        pixel_y = world_y % 8
+        pixel_x = world_x % 8
+        bg_map_base = 0x9C00 if self.bg_tile_map_select() else 0x9800
+        tile_map_index = tile_y * 32 + tile_x
+        tile_number = int(self.memory[bg_map_base + tile_map_index])
+        tile_addr = self.get_bg_window_tile_addr(tile_number)
+        return self.get_tile_pixel(tile_addr, pixel_x, pixel_y)
+    def get_window_color_id_at(self, screen_x, screen_y):
+        if not self.window_enabled():
+            return None
+        wy = int(self.memory[0xFF4A])
+        wx = int(self.memory[0xFF4B]) - 7
+        if screen_y < wy or screen_x < wx:
+            return None
+        window_x = screen_x - wx
+        window_y = screen_y - wy
+        tile_y = window_y // 8
+        tile_x = window_x // 8
+        pixel_y = window_y % 8
+        pixel_x = window_x % 8
+        win_map_base = 0x9C00 if self.window_tile_map_select() else 0x9800
+        tile_map_index = tile_y * 32 + tile_x
+        tile_number = int(self.memory[win_map_base + tile_map_index])
+        tile_addr = self.get_bg_window_tile_addr(tile_number)
+        return self.get_tile_pixel(tile_addr, pixel_x, pixel_y)
 
-        # LCDC bit 3 selects background tile map
-        bg_map_base = 0x9C00 if (lcdc & 0x08) else 0x9800
+    # full frame render
+    def render_background_and_window(self, surface, bg_color_ids):
+        if not self.lcd_enabled():
+            surface.fill(COLOR_WHITE)
+            for y in range(HEIGHT):
+                for x in range(WIDTH):
+                    bg_color_ids[y][x] = 0
+            return
         for screen_y in range(HEIGHT):
-            world_y = (screen_y + scy) & 0xFF
-            tile_y = world_y // 8
-            pixel_y = world_y % 8
             for screen_x in range(WIDTH):
-                world_x = (screen_x + scx) & 0xFF
-                tile_x = world_x // 8
-                pixel_x = world_x % 8
-                tile_map_index = tile_y * 32 + tile_x
-                tile_number = int(self.memory[bg_map_base + tile_map_index])
-                tile_addr = self.get_bg_tile_addr(tile_number)
-                color_id = self.get_tile_pixel(tile_addr, pixel_x, pixel_y)
+                color_id = self.get_bg_color_id_at(screen_x, screen_y)
+                win_color_id = self.get_window_color_id_at(screen_x, screen_y)
+                if win_color_id is not None:
+                    color_id = win_color_id
+                bg_color_ids[screen_y][screen_x] = color_id
                 surface.set_at((screen_x, screen_y), self.get_bg_palette_color(color_id))
-
-    # render frame (just background for now)
+    def render_sprites(self, surface, bg_color_ids):
+        if not self.lcd_enabled():
+            return
+        if not self.sprites_enabled():
+            return
+        sprite_height = 16 if self.sprite_size_8x16() else 8
+        for sprite_index in range(39, -1, -1):
+            oam_addr = 0xFE00 + sprite_index * 4
+            sprite_y = int(self.memory[oam_addr]) - 16
+            sprite_x = int(self.memory[oam_addr + 1]) - 8
+            tile_number = int(self.memory[oam_addr + 2])
+            attrs = int(self.memory[oam_addr + 3])
+            priority_behind_bg = bool(attrs & 0x80)
+            y_flip = bool(attrs & 0x40)
+            x_flip = bool(attrs & 0x20)
+            palette_num = 1 if (attrs & 0x10) else 0
+            if sprite_height == 16:
+                tile_number &= 0xFE
+            for local_y in range(sprite_height):
+                screen_y = sprite_y + local_y
+                if screen_y < 0 or screen_y >= HEIGHT:
+                    continue
+                sprite_pixel_y = (sprite_height - 1 - local_y) if y_flip else local_y
+                if sprite_height == 16:
+                    if sprite_pixel_y < 8:
+                        tile_addr = self.get_sprite_tile_addr(tile_number)
+                        tile_row_y = sprite_pixel_y
+                    else:
+                        tile_addr = self.get_sprite_tile_addr(tile_number + 1)
+                        tile_row_y = sprite_pixel_y - 8
+                else:
+                    tile_addr = self.get_sprite_tile_addr(tile_number)
+                    tile_row_y = sprite_pixel_y
+                for local_x in range(8):
+                    screen_x = sprite_x + local_x
+                    if screen_x < 0 or screen_x >= WIDTH:
+                        continue
+                    sprite_pixel_x = (7 - local_x) if x_flip else local_x
+                    color_id = self.get_tile_pixel(tile_addr, sprite_pixel_x, tile_row_y)
+                    if color_id == 0: # OBJ color 0 is transparent
+                        continue
+                    if priority_behind_bg and bg_color_ids[screen_y][screen_x] != 0: # sprite hidden when BG/window color id is nonzero
+                        continue
+                    surface.set_at(
+                        (screen_x, screen_y),
+                        self.get_obj_palette_color(palette_num, color_id)
+                    )
     def render_frame(self, surface):
-        self.render_background(surface)
+        bg_color_ids = [[0 for _ in range(WIDTH)] for _ in range(HEIGHT)]
+        self.render_background_and_window(surface, bg_color_ids)
+        self.render_sprites(surface, bg_color_ids)
 
     # advance LCD timing
     def step(self, m_cycles):
@@ -120,7 +206,6 @@ class PPU:
         if ly >= 144:
             mode = 1  # VBlank
         else:
-            # rough visible-line timing split
             if self.scanline_m_cycles < 20:
                 mode = 2  # OAM search
             elif self.scanline_m_cycles < 63:
