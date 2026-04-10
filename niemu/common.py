@@ -63,11 +63,11 @@ class Memory:
 
 # get, reset, and set bit
 def get_bit(x, bit_num):
-    return bool((int(x) >> bit_num) & 1)
+    return bool((int(x) >> int(bit_num)) & 1)
 def reset_bit(x, bit_num):
-    return int(x) & ~(1 << bit_num)
+    return int(x) & ~(1 << int(bit_num))
 def set_bit(x, bit_num):
-    return int(x) | (1 << bit_num)
+    return int(x) | (1 << int(bit_num))
 
 # class to represent a register
 class Register:

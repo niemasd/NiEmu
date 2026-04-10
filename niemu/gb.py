@@ -977,8 +977,8 @@ class GameBoy:
 
     # 0x34
     def INC_addr(self, register_address):
-        address = register_address.get()
-        result = (self.memory[address] + 1) & 0xFF
+        address = int(register_address.get())
+        result = (int(self.memory[address]) + 1) & 0xFF
         self.memory[address] = result
         if result == 0:
             self.set_flag_Z()
@@ -1013,7 +1013,7 @@ class GameBoy:
 
     # 0x35
     def DEC_addr(self, register_address):
-        address = register_address.get()
+        address = int(register_address.get())
         result = (int(self.memory[address]) + 255) & 0xFF # (X + 255) & 0xFF == (X - 1) & 0xFF
         self.memory[address] = result
         if result == 0:
@@ -1304,7 +1304,7 @@ class GameBoy:
 
     # 0xCB36
     def SWAP_addr(self, register_address):
-        address = register_address.get()
+        address = int(register_address.get())
         orig = int(self.memory[address])
         result = (orig << 4) | (orig >> 4)
         if result == 0:
@@ -1329,7 +1329,7 @@ class GameBoy:
 
     # 0xCB46, 0xCB4E, 0xCB56, 0xCB5E, 0xCB66, 0xCB6E, 0xCB76, 0xCB7E
     def BIT_addr(self, register_address, bit_num):
-        if get_bit(self.memory[register_address.get()], bit_num):
+        if get_bit(int(self.memory[int(register_address.get())]), bit_num):
             self.reset_flag_Z()
         else:
             self.set_flag_Z()
@@ -1344,7 +1344,7 @@ class GameBoy:
 
     # 0xCB86, 0xCB8E, 0xCB96, 0xCB9E, 0xCBA6, 0xCBAE, 0xCBB6, 0xCBBE
     def RES_addr(self, register_address, bit_num):
-        address = register_address.get()
+        address = int(register_address.get())
         self.memory[address] = reset_bit(self.memory[address], bit_num)
         return 2, 4
 
@@ -1355,7 +1355,7 @@ class GameBoy:
 
     # 0xCBC6, 0xCBCE, 0xCBD6, 0xCBDE, 0xCBE6, 0xCBEE, 0xCBF6, 0xCBFE
     def SET_addr(self, register_address, bit_num):
-        address = register_address.get()
+        address = int(register_address.get())
         self.memory[address] = set_bit(self.memory[address], bit_num)
         return 2, 4
 
@@ -1417,10 +1417,19 @@ class GameBoy:
                     m_cycles_remaining -= num_m_cycles
                     continue
 
-                # DEBUG TODO
+                # DEBUG TODO DELETE
                 trace_pc = int(self.PC.get())
                 trace_op = int(self.memory[trace_pc])
-                print(f"PC={trace_pc:04X} OP={trace_op:02X} A={int(self.A.get()):02X} F={int(self.F.get()):02X} BC={int(self.BC.get()):04X} DE={int(self.DE.get()):04X} HL={int(self.HL.get()):04X} SP={int(self.SP.get()):04X}")
+                if trace_op == 0xF0:
+                    imm = int(self.memory[trace_pc + 1])
+                    addr = 0xFF00 + imm
+                    print(f"PC={trace_pc:04X} F0 a8={imm:02X} addr={addr:04X} value={int(self.memory[addr]):02X}")
+                elif trace_op == 0xFE:
+                    imm = int(self.memory[trace_pc + 1])
+                    print(f"PC={trace_pc:04X} FE d8={imm:02X} A={int(self.A.get()):02X}")
+                elif trace_op == 0x20:
+                    off = int(int8(int(self.memory[trace_pc + 1])))
+                    print(f"PC={trace_pc:04X} JR NZ {off:+d} Z={int(self.get_flag_Z())}")
 
                 # rest of logic
                 pc_orig = self.PC.get()
