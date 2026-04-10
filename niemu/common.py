@@ -61,6 +61,14 @@ class Memory:
     def __str__(self):
         return '\n'.join(' '.join(f'0x{self[i]:02X}' for i in range(row_start, row_start + 0x10)) for row_start in range(0, len(self), 0x10))
 
+# get, reset, and set bit
+def get_bit(x, bit_num):
+    return bool((int(x) >> bit_num) & 1)
+def reset_bit(x, bit_num):
+    return int(x) & ~(1 << bit_num)
+def set_bit(x, bit_num):
+    return int(x) | (1 << bit_num)
+
 # class to represent a register
 class Register:
     def __init__(self, value=0):
@@ -72,11 +80,11 @@ class Register:
     def get(self):
         return self.data
     def get_bit(self, bit_num):
-        return bool((self.get() >> bit_num) & 1)
+        return get_bit(self.get(), bit_num)
     def reset_bit(self, bit_num):
-        self.set(self.get() & ~(1 << bit_num))
+        self.set(reset_bit(self.get(), bit_num))
     def set_bit(self, bit_num):
-        self.set(self.get() | (1 << bit_num))
+        self.set(set_bit(self.get(), bit_num))
     def add(self, value): # negate value to subtract
         self.set(self.get() + value)
 

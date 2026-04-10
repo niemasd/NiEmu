@@ -8,7 +8,7 @@ https://rgbds.gbdev.io/docs/v1.0.1/gbz80.7
 '''
 
 # imports
-from niemu.common import COLOR_BLACK, COLOR_GRAY_DARK, COLOR_GRAY_LIGHT, COLOR_WHITE, load_game_data, Memory, Register8, Register8Pair, Register16
+from niemu.common import *
 from numpy import int8, uint8, uint16
 import pygame
 
@@ -185,6 +185,7 @@ class GameBoy:
         self.instructions = [None]*0x100
         self.instructions[0xCB] = [None]*0x100
 
+        ### define single-byte opcode instructions ###
         # define special instructions
         self.instructions[0x00] = self.NOP                    # 0x00 = NOP
         self.instructions[0x10] = self.STOP                   # 0x10 = STOP
@@ -477,8 +478,84 @@ class GameBoy:
         self.instructions[0xF8] = lambda: self.LD_XX_XX_s8(self.HL, self.SP)  # 0xF8 = LD HL, SP+s8
         self.instructions[0xFA] = lambda: self.LD_X_a16(self.A)               # 0xFA = LD A, (a16)
 
-        # define 0xCB?? instructions
-        pass # TODO
+        ### define 0xCB?? instructions ###
+        # define SWAP operations
+        self.instructions[0xCB][0x30] = lambda: self.SWAP_X(self.B)     # 0xCB30 = SWAP B
+        self.instructions[0xCB][0x31] = lambda: self.SWAP_X(self.C)     # 0xCB31 = SWAP C
+        self.instructions[0xCB][0x32] = lambda: self.SWAP_X(self.D)     # 0xCB32 = SWAP D
+        self.instructions[0xCB][0x33] = lambda: self.SWAP_X(self.E)     # 0xCB33 = SWAP E
+        self.instructions[0xCB][0x34] = lambda: self.SWAP_X(self.H)     # 0xCB34 = SWAP H
+        self.instructions[0xCB][0x35] = lambda: self.SWAP_X(self.L)     # 0xCB35 = SWAP L
+        self.instructions[0xCB][0x37] = lambda: self.SWAP_X(self.A)     # 0xCB37 = SWAP A
+        self.instructions[0xCB][0x36] = lambda: self.SWAP_addr(self.HL) # 0xCB36 = SWAP (HL)
+
+        # define BIT ?, ? operations
+        self.instructions[0xCB][0x40] = lambda: self.BIT(self.B, 0) # 0xCB40 = BIT 0, B
+        self.instructions[0xCB][0x41] = lambda: self.BIT(self.C, 0) # 0xCB41 = BIT 0, C
+        self.instructions[0xCB][0x42] = lambda: self.BIT(self.D, 0) # 0xCB42 = BIT 0, D
+        self.instructions[0xCB][0x43] = lambda: self.BIT(self.E, 0) # 0xCB43 = BIT 0, E
+        self.instructions[0xCB][0x44] = lambda: self.BIT(self.H, 0) # 0xCB44 = BIT 0, H
+        self.instructions[0xCB][0x45] = lambda: self.BIT(self.L, 0) # 0xCB45 = BIT 0, L
+        self.instructions[0xCB][0x47] = lambda: self.BIT(self.A, 0) # 0xCB47 = BIT 0, A
+        self.instructions[0xCB][0x48] = lambda: self.BIT(self.B, 1) # 0xCB48 = BIT 1, B
+        self.instructions[0xCB][0x49] = lambda: self.BIT(self.C, 1) # 0xCB49 = BIT 1, C
+        self.instructions[0xCB][0x4A] = lambda: self.BIT(self.D, 1) # 0xCB4A = BIT 1, D
+        self.instructions[0xCB][0x4B] = lambda: self.BIT(self.E, 1) # 0xCB4B = BIT 1, E
+        self.instructions[0xCB][0x4C] = lambda: self.BIT(self.H, 1) # 0xCB4C = BIT 1, H
+        self.instructions[0xCB][0x4D] = lambda: self.BIT(self.L, 1) # 0xCB4D = BIT 1, L
+        self.instructions[0xCB][0x4F] = lambda: self.BIT(self.A, 1) # 0xCB4F = BIT 1, A
+        self.instructions[0xCB][0x50] = lambda: self.BIT(self.B, 2) # 0xCB50 = BIT 2, B
+        self.instructions[0xCB][0x51] = lambda: self.BIT(self.C, 2) # 0xCB51 = BIT 2, C
+        self.instructions[0xCB][0x52] = lambda: self.BIT(self.D, 2) # 0xCB52 = BIT 2, D
+        self.instructions[0xCB][0x53] = lambda: self.BIT(self.E, 2) # 0xCB53 = BIT 2, E
+        self.instructions[0xCB][0x54] = lambda: self.BIT(self.H, 2) # 0xCB54 = BIT 2, H
+        self.instructions[0xCB][0x55] = lambda: self.BIT(self.L, 2) # 0xCB55 = BIT 2, L
+        self.instructions[0xCB][0x57] = lambda: self.BIT(self.A, 2) # 0xCB57 = BIT 2, A
+        self.instructions[0xCB][0x58] = lambda: self.BIT(self.B, 3) # 0xCB58 = BIT 3, B
+        self.instructions[0xCB][0x59] = lambda: self.BIT(self.C, 3) # 0xCB59 = BIT 3, C
+        self.instructions[0xCB][0x5A] = lambda: self.BIT(self.D, 3) # 0xCB5A = BIT 3, D
+        self.instructions[0xCB][0x5B] = lambda: self.BIT(self.E, 3) # 0xCB5B = BIT 3, E
+        self.instructions[0xCB][0x5C] = lambda: self.BIT(self.H, 3) # 0xCB5C = BIT 3, H
+        self.instructions[0xCB][0x5D] = lambda: self.BIT(self.L, 3) # 0xCB5D = BIT 3, L
+        self.instructions[0xCB][0x5F] = lambda: self.BIT(self.A, 3) # 0xCB5F = BIT 3, A
+        self.instructions[0xCB][0x60] = lambda: self.BIT(self.B, 4) # 0xCB60 = BIT 4, B
+        self.instructions[0xCB][0x61] = lambda: self.BIT(self.C, 4) # 0xCB61 = BIT 4, C
+        self.instructions[0xCB][0x62] = lambda: self.BIT(self.D, 4) # 0xCB62 = BIT 4, D
+        self.instructions[0xCB][0x63] = lambda: self.BIT(self.E, 4) # 0xCB63 = BIT 4, E
+        self.instructions[0xCB][0x64] = lambda: self.BIT(self.H, 4) # 0xCB64 = BIT 4, H
+        self.instructions[0xCB][0x65] = lambda: self.BIT(self.L, 4) # 0xCB65 = BIT 4, L
+        self.instructions[0xCB][0x67] = lambda: self.BIT(self.A, 4) # 0xCB67 = BIT 4, A
+        self.instructions[0xCB][0x68] = lambda: self.BIT(self.B, 5) # 0xCB68 = BIT 5, B
+        self.instructions[0xCB][0x69] = lambda: self.BIT(self.C, 5) # 0xCB69 = BIT 5, C
+        self.instructions[0xCB][0x6A] = lambda: self.BIT(self.D, 5) # 0xCB6A = BIT 5, D
+        self.instructions[0xCB][0x6B] = lambda: self.BIT(self.E, 5) # 0xCB6B = BIT 5, E
+        self.instructions[0xCB][0x6C] = lambda: self.BIT(self.H, 5) # 0xCB6C = BIT 5, H
+        self.instructions[0xCB][0x6D] = lambda: self.BIT(self.L, 5) # 0xCB6D = BIT 5, L
+        self.instructions[0xCB][0x6F] = lambda: self.BIT(self.A, 5) # 0xCB6F = BIT 5, A
+        self.instructions[0xCB][0x70] = lambda: self.BIT(self.B, 6) # 0xCB70 = BIT 6, B
+        self.instructions[0xCB][0x71] = lambda: self.BIT(self.C, 6) # 0xCB71 = BIT 6, C
+        self.instructions[0xCB][0x72] = lambda: self.BIT(self.D, 6) # 0xCB72 = BIT 6, D
+        self.instructions[0xCB][0x73] = lambda: self.BIT(self.E, 6) # 0xCB73 = BIT 6, E
+        self.instructions[0xCB][0x74] = lambda: self.BIT(self.H, 6) # 0xCB74 = BIT 6, H
+        self.instructions[0xCB][0x75] = lambda: self.BIT(self.L, 6) # 0xCB75 = BIT 6, L
+        self.instructions[0xCB][0x77] = lambda: self.BIT(self.A, 6) # 0xCB77 = BIT 6, A
+        self.instructions[0xCB][0x78] = lambda: self.BIT(self.B, 7) # 0xCB78 = BIT 7, B
+        self.instructions[0xCB][0x79] = lambda: self.BIT(self.C, 7) # 0xCB79 = BIT 7, C
+        self.instructions[0xCB][0x7A] = lambda: self.BIT(self.D, 7) # 0xCB7A = BIT 7, D
+        self.instructions[0xCB][0x7B] = lambda: self.BIT(self.E, 7) # 0xCB7B = BIT 7, E
+        self.instructions[0xCB][0x7C] = lambda: self.BIT(self.H, 7) # 0xCB7C = BIT 7, H
+        self.instructions[0xCB][0x7D] = lambda: self.BIT(self.L, 7) # 0xCB7D = BIT 7, L
+        self.instructions[0xCB][0x7F] = lambda: self.BIT(self.A, 7) # 0xCB7F = BIT 7, A
+
+        # define BIT ?, (??) operations
+        self.instructions[0xCB][0x46] = lambda: self.BIT_addr(self.HL, 0) # 0xCB46 = BIT 0, (HL)
+        self.instructions[0xCB][0x4E] = lambda: self.BIT_addr(self.HL, 1) # 0xCB4E = BIT 1, (HL)
+        self.instructions[0xCB][0x56] = lambda: self.BIT_addr(self.HL, 2) # 0xCB56 = BIT 2, (HL)
+        self.instructions[0xCB][0x5E] = lambda: self.BIT_addr(self.HL, 3) # 0xCB5E = BIT 3, (HL)
+        self.instructions[0xCB][0x66] = lambda: self.BIT_addr(self.HL, 4) # 0xCB66 = BIT 4, (HL)
+        self.instructions[0xCB][0x6E] = lambda: self.BIT_addr(self.HL, 5) # 0xCB6E = BIT 5, (HL)
+        self.instructions[0xCB][0x76] = lambda: self.BIT_addr(self.HL, 6) # 0xCB76 = BIT 6, (HL)
+        self.instructions[0xCB][0x7E] = lambda: self.BIT_addr(self.HL, 7) # 0xCB7E = BIT 7, (HL)
 
     # get flags
     def get_flag_Z(self): # Zero
@@ -1011,6 +1088,54 @@ class GameBoy:
             return 0, num_cycles # # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
             return 1, 2
+
+    # 0xCB30, 0xCB31, 0xCB32, 0xCB33, 0xCB34, 0xCB35, 0xCB37
+    def SWAP_X(self, register):
+        orig = int(register.get())
+        result = (orig << 4) | (orig >> 4)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        self.reset_flag_H()
+        self.reset_flag_C()
+        register.set(result)
+        return 2, 2
+
+    # 0xCB36
+    def SWAP_addr(self, register_address):
+        orig = int(self.memory[register_address.get()])
+        result = (orig << 4) | (orig >> 4)
+        if result == 0:
+            self.set_flag_Z()
+        else:
+            self.reset_flag_Z()
+        self.reset_flag_N()
+        self.reset_flag_H()
+        self.reset_flag_C()
+        register.set(result)
+        return 2, 4
+
+    # 0xCB40-0xCB7F
+    def BIT(self, register, bit_num):
+        if register.get_bit(bit_num):
+            self.reset_flag_Z()
+        else:
+            self.set_flag_Z()
+        self.reset_flag_N()
+        self.set_flag_H()
+        return 2, 2
+
+    # 0xCB46, 0xCB??
+    def BIT_addr(self, register_address, bit_num):
+        if get_bit(self.memory[register_address.get()], bit_num):
+            self.reset_flag_Z()
+        else:
+            self.set_flag_Z()
+        self.reset_flag_N()
+        self.set_flag_H()
+        return 2, 3
 
     # load a game
     def load_game(self, path):
