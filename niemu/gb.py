@@ -187,8 +187,8 @@ class PPU:
         # handle LCD not enabled
         if not self.lcd_enabled():
             self.scanline_m_cycles = 0
-            self.memory[0xFF44] = 0
-            self.memory[0xFF41] = (self.memory[0xFF41] & 0xFC) | 0
+            self.memory.raw_write(0xFF44, 0)
+            self.memory.raw_write(0xFF41, (int(self.memory[0xFF41]) & 0xFC) | 0)
             return
 
         # 114 M-cycles per scanline
@@ -196,9 +196,9 @@ class PPU:
         while self.scanline_m_cycles >= 114:
             self.scanline_m_cycles -= 114
             ly = (int(self.memory[0xFF44]) + 1) % 154
-            self.memory[0xFF44] = ly
+            self.memory.raw_write(0xFF44, ly)
             if ly == 144:
-                self.memory[0xFF0F] |= 0x01  # request VBlank interrupt
+                self.memory.raw_write(0xFF0F, int(self.memory[0xFF0F]) | 0x01) # request VBlank interrupt
 
         # update STAT mode
         ly = int(self.memory[0xFF44])
@@ -220,7 +220,7 @@ class PPU:
             stat |= 0x04
         else:
             stat &= 0xFB
-        self.memory[0xFF41] = stat
+        self.memory.raw_write(0xFF41, stat)
 
 # class to represent F register
 class RegisterF(Register8):
@@ -229,11 +229,40 @@ class RegisterF(Register8):
 
 # class to represent Nintendo Game Boy specific memory
 class MemoryGB(Memory):
+    def raw_write(self, i, x):
+        super().__setitem__(int(i) & 0xFFFF, int(x) & 0xFF)
     def __setitem__(self, i, x):
+        # DEBUG TODO DELETE
+        if i == 0xFF40:
+            print(f"WRITE LCDC PC={int(gb.PC.get()):04X} value={x:02X}")
+        if isinstance(i, slice):
+            return super().__setitem__(i, x)
+        i = int(i) & 0xFFFF
+        x = int(x) & 0xFF
+        if 0x0000 <= i <= 0x7FFF: # ROM area: ignore writes
+            return
+        if 0xE000 <= i <= 0xFDFF: # Echo RAM
+            super().__setitem__(i, x)
+            super().__setitem__(i - 0x2000, x)
+            return
+        if 0xC000 <= i <= 0xDDFF: # Writing to C000-DDFF should also update echo
+            super().__setitem__(i, x)
+            super().__setitem__(i + 0x2000, x)
+            return
+        if 0xFEA0 <= i <= 0xFEFF: # Unusable area
+            return
+        if i == 0xFF04: # DIV resets to 0 on write
+            super().__setitem__(i, 0)
+            return
+        if i == 0xFF44: # LY resets to 0 on write
+            super().__setitem__(i, 0)
+            return
+        if i == 0xFF46: # DMA
+            super().__setitem__(i, x)
+            source = x << 8
+            self.data[0xFE00:0xFEA0] = self.data[source:source + 0xA0]
+            return
         super().__setitem__(i, x)
-        if i == 0xFF46:
-            source = int(x) << 8
-            self.data[0xFE00 : 0xFEA0] = self.data[source : source + 0xA0]
 
 # class to emulate Nintendo Game Boy
 class GameBoy:
@@ -594,10 +623,10 @@ class GameBoy:
         self.instructions[0xDC] = lambda: self.CALL_a16(self.get_flag_C())     # 0xDC = CALL C, a16
 
         # define PUSH instructions
-        self.instructions[0xC5] = lambda: self.PUSH(self.BC.get()) # 0xC5 = PUSH BC
-        self.instructions[0xD5] = lambda: self.PUSH(self.DE.get()) # 0xD5 = PUSH DE
-        self.instructions[0xE5] = lambda: self.PUSH(self.HL.get()) # 0xE5 = PUSH HL
-        self.instructions[0xF5] = lambda: self.PUSH(self.AF.get()) # 0xF5 = PUSH AF
+        self.instructions[0xC5] = lambda: self.PUSH(int(self.BC.get())) # 0xC5 = PUSH BC
+        self.instructions[0xD5] = lambda: self.PUSH(int(self.DE.get())) # 0xD5 = PUSH DE
+        self.instructions[0xE5] = lambda: self.PUSH(int(self.HL.get())) # 0xE5 = PUSH HL
+        self.instructions[0xF5] = lambda: self.PUSH(int(self.AF.get())) # 0xF5 = PUSH AF
 
         # define RST instructions
         self.instructions[0xC7] = lambda: self.RST(0x00) # 0xC7 = RST 00H
@@ -923,7 +952,7 @@ class GameBoy:
             if pending & mask:
                 self.ime = False
                 self.memory[0xFF0F] = interrupt_flags & (~mask & 0xFF)
-                self.PUSH(self.PC.get())
+                self.PUSH(int(self.PC.get()))
                 self.PC.set(vector)
                 return 5  # interrupt servicing costs 5 M-cycles
         return 0
@@ -1509,20 +1538,6 @@ class GameBoy:
                     self.ppu.step(num_m_cycles)
                     m_cycles_remaining -= num_m_cycles
                     continue
-
-                # DEBUG TODO DELETE
-                trace_pc = int(self.PC.get())
-                trace_op = int(self.memory[trace_pc])
-                if trace_op == 0xF0:
-                    imm = int(self.memory[trace_pc + 1])
-                    addr = 0xFF00 + imm
-                    print(f"PC={trace_pc:04X} F0 a8={imm:02X} addr={addr:04X} value={int(self.memory[addr]):02X}")
-                elif trace_op == 0xFE:
-                    imm = int(self.memory[trace_pc + 1])
-                    print(f"PC={trace_pc:04X} FE d8={imm:02X} A={int(self.A.get()):02X}")
-                elif trace_op == 0x20:
-                    off = int(int8(int(self.memory[trace_pc + 1])))
-                    print(f"PC={trace_pc:04X} JR NZ {off:+d} Z={int(self.get_flag_Z())}")
 
                 # rest of logic
                 pc_orig = self.PC.get()
