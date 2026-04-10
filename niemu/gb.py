@@ -232,9 +232,6 @@ class MemoryGB(Memory):
     def raw_write(self, i, x):
         super().__setitem__(int(i) & 0xFFFF, int(x) & 0xFF)
     def __setitem__(self, i, x):
-        # DEBUG TODO DELETE
-        if i == 0xFF40:
-            print(f"WRITE LCDC PC={int(gb.PC.get()):04X} value={x:02X}")
         if isinstance(i, slice):
             return super().__setitem__(i, x)
         i = int(i) & 0xFFFF
@@ -1542,6 +1539,12 @@ class GameBoy:
                     m_cycles_remaining -= num_m_cycles
                     continue
                 '''
+
+                # DEBUG TODO DELETE
+                trace_pc = int(self.PC.get())
+                trace_op = int(self.memory[trace_pc])
+                if 0x0220 <= trace_pc <= 0x03A0 or trace_op in (0xC3, 0xC2, 0xCA, 0x18, 0x20, 0x28, 0x30, 0x38, 0xC9, 0xC0, 0xC8, 0xD0, 0xD8, 0xCD):
+                    print(f"PC={trace_pc:04X} OP={trace_op:02X} A={int(self.A.get()):02X} F={int(self.F.get()):02X} BC={int(self.BC.get()):04X} DE={int(self.DE.get()):04X} HL={int(self.HL.get()):04X} SP={int(self.SP.get()):04X}")
 
                 # rest of logic
                 pc_orig = self.PC.get()
