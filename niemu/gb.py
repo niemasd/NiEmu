@@ -765,7 +765,7 @@ class GameBoy:
 
     # 0xC7, 0xCF, 0xD7, 0xDF, 0xE7, 0xEF, 0xF7, 0xFF
     def RST(self, address):
-        self.PUSH(self.PC.get())
+        self.PUSH(int(self.PC.get()) + 1)
         self.PC.set(address)
         return 0, 4 # # moves PC, so return 0 bytes (to not move PC again in emulation loop)
 
