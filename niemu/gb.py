@@ -455,6 +455,16 @@ class GameBoy:
         self.instructions[0xE5] = lambda: self.PUSH(self.HL.get()) # 0xE5 = PUSH HL
         self.instructions[0xF5] = lambda: self.PUSH(self.AF.get()) # 0xF5 = PUSH AF
 
+        # define RST instructions
+        self.instructions[0xC7] = lambda: self.RST(0x00) # 0xC7 = RST 00H
+        self.instructions[0xCF] = lambda: self.RST(0x08) # 0xCF = RST 08H
+        self.instructions[0xD7] = lambda: self.RST(0x10) # 0xD7 = RST 10H
+        self.instructions[0xDF] = lambda: self.RST(0x18) # 0xDF = RST 18H
+        self.instructions[0xE7] = lambda: self.RST(0x20) # 0xE7 = RST 20H
+        self.instructions[0xEF] = lambda: self.RST(0x28) # 0xEF = RST 28H
+        self.instructions[0xF7] = lambda: self.RST(0x30) # 0xF7 = RST 30H
+        self.instructions[0xFF] = lambda: self.RST(0x38) # 0xFF = RST 38H
+
         # define additional LD operations
         self.instructions[0xE0] = lambda: self.LD_a8_X(self.A)                # 0xE0 = LD (a8), A
         self.instructions[0xE2] = lambda: self.LD_addr_X_FF00(self.A, self.C) # 0xE2 = LD (C), A
@@ -499,26 +509,32 @@ class GameBoy:
 
     # read 8 bits (1 byte) after the given register
     def read_8(self, register, delta=1):
-        return self.memory[register.get() + delta]
+        return self.memory[int(register.get()) + delta]
 
     # read 16 bits (2 bytes) after the given register
     def read_16(self, register, delta=1):
-        orig = register.get()
+        orig = int(register.get())
         return uint16(self.memory[orig + delta] | (int(self.memory[orig + delta + 1]) << 8))
 
     # pop value from stack to register
     def POP(self, register):
-        sp_orig = self.SP.get()
+        sp_orig = int(self.SP.get())
         register.set(int(self.memory[sp_orig]) | (int(self.memory[sp_orig + 1]) << 8))
         self.SP.set(sp_orig + 2)
         return 1, 3
 
-    # push value from register onto stack
+    # push value from register onto stack: 0xC5, 0xD5, 0xE5, 0xF5
     def PUSH(self, value):
-        sp_orig = self.SP.get()
+        sp_orig = int(self.SP.get())
         self.memory[sp_orig - 1] = uint8((value >> 8) & 0xFF)
         self.memory[sp_orig - 2] = uint8(value & 0xFF)
         self.SP.set(sp_orig - 2)
+        return 1, 4
+
+    # 0xC7, 0xCF, 0xD7, 0xDF, 0xE7, 0xEF, 0xF7, 0xFF
+    def RST(self, address):
+        self.PUSH(self.PC.get())
+        self.PC.set(address)
         return 1, 4
 
     # service one pending interrupt if possible
@@ -667,7 +683,7 @@ class GameBoy:
 
     # 0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x3C
     def INC_X(self, register):
-        result = (register.get() + 1) & 0xFF
+        result = (int(register.get()) + 1) & 0xFF
         register.set(result)
         if result == 0:
             self.set_flag_Z()
@@ -703,7 +719,7 @@ class GameBoy:
 
     # 0x05, 0x0D, 0x15, 0x1D, 0x25, 0x2D, 0x3D
     def DEC_X(self, register):
-        result = (register.get() + 255) & 0xFF # (X + 255) & 0xFF == (X - 1) & 0xFF
+        result = (int(register.get()) + 255) & 0xFF # (X + 255) & 0xFF == (X - 1) & 0xFF
         register.set(result)
         if result == 0:
             self.set_flag_Z()
@@ -719,7 +735,7 @@ class GameBoy:
     # 0x35
     def DEC_addr(self, register_address):
         address = register_address.get()
-        result = (self.memory[address] + 255) & 0xFF # (X + 255) & 0xFF == (X - 1) & 0xFF
+        result = (int(self.memory[address]) + 255) & 0xFF # (X + 255) & 0xFF == (X - 1) & 0xFF
         self.memory[address] = result
         if result == 0:
             self.set_flag_Z()
@@ -734,8 +750,8 @@ class GameBoy:
 
     # 0x09, 0x19, 0x29, 0x39
     def ADD_XX_XX(self, register_store, register_other):
-        rs_orig = register_store.get()
-        ro_orig = register_other.get()
+        rs_orig = int(register_store.get())
+        ro_orig = int(register_other.get())
         result = rs_orig + ro_orig
         self.reset_flag_N()
         if ((rs_orig & 0x0FFF) + (ro_orig & 0x0FFF)) > 0x0FFF:
@@ -751,8 +767,8 @@ class GameBoy:
 
     # 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F
     def ADD_X_X(self, register_store, register_other, addr=False, carry=False):
-        rs_orig = register_store.get()
-        ro_orig = register_other.get()
+        rs_orig = int(register_store.get())
+        ro_orig = int(register_other.get())
         c_orig = int(carry and self.get_flag_C())
         if addr:
             ro_orig = self.memory[ro_orig]
@@ -778,8 +794,8 @@ class GameBoy:
 
     # 0xC6, 0xCE
     def ADD_X_d8(self, register_store, carry=False):
-        rs_orig = register_store.get()
-        ro_orig = self.read_8(self.PC)
+        rs_orig = int(register_store.get())
+        ro_orig = int(self.read_8(self.PC))
         c_orig = int(carry and self.get_flag_C())
         result = rs_orig + ro_orig + c_orig
         if (result & 0xFF) == 0:
@@ -948,7 +964,7 @@ class GameBoy:
     # 0x18, 0x20, 0x28, 0x30, 0x38
     def JR_s8(self, condition):
         if condition:
-            self.PC.add(2 + int8(self.read_8(self.PC)))
+            self.PC.add(2 + int(int8(self.read_8(self.PC))))
             return 0, 3 # moves PC, so return 0 bytes (to not move PC again in emulation loop)
         else:
             return 2, 2
