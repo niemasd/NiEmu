@@ -882,7 +882,7 @@ class GameBoy:
 
     # 0x36
     def LD_addr_d8(self, register_target_address):
-        self.memory[register_target_address.get()] = self.read_8(self.PC)
+        self.memory[int(register_target_address.get())] = int(self.read_8(self.PC))
         return 2, 3
 
     # 0x01, 0x11, 0x21, 0x31
@@ -909,46 +909,50 @@ class GameBoy:
 
     # 0xE0
     def LD_a8_X(self, register):
-        self.memory[0xFF00 | self.read_8(self.PC)] = register.get()
+        address = 0xFF00 + int(self.read_8(self.PC))
+        self.memory[address] = int(register.get())
         return 2, 3
 
     # 0xEA
     def LD_a16_X(self, register):
-        self.memory[self.read_16(self.PC)] = register.get()
+        self.memory[int(self.read_16(self.PC))] = int(register.get())
         return 3, 4
 
     # 0xF0
     def LD_X_a8(self, register):
-        register.set(self.memory[0xFF00 | self.read_8(self.PC)])
+        address = 0xFF00 + int(self.read_8(self.PC))
+        register.set(int(self.memory[address]))
         return 2, 3
 
     # 0xFA
     def LD_X_a16(self, register):
-        register.set(self.memory[self.read_16(self.PC)])
+        register.set(int(self.memory[int(self.read_16(self.PC))]))
         return 3, 4
 
     # 0x02, 0x12, 0x22, 0x32
     def LD_addr_X(self, register_source, register_target_address, register_target_delta=0):
-        self.memory[register_target_address.get()] = register_source.get()
+        self.memory[int(register_target_address.get())] = int(register_source.get())
         if register_target_delta != 0:
             register_target_address.add(register_target_delta)
         return 1, 2
 
     # 0xE2
     def LD_addr_X_FF00(self, register_source, register_target_address):
-        self.memory[0xFF00 | register_target_address.get()] = register_source.get()
+        address = 0xFF00 + int(register_target_address.get())
+        self.memory[address] = int(register_source.get())
         return 1, 2
 
     # 0x0A, 0x1A, 0x2A, 0x3A
     def LD_X_addr(self, register_source_address, register_target, register_source_delta=0):
-        register_target.set(self.memory[register_source_address.get()])
+        register_target.set(int(self.memory[int(register_source_address.get())]))
         if register_source_delta != 0:
             register_source_address.add(register_source_delta)
         return 1, 2
 
     # 0xF2
     def LD_X_addr_FF00(self, register_source_address, register_target):
-        register_target.set(self.memory[0xFF00 | register_source_address.get()])
+        address = 0xFF00 + int(register_source_address.get())
+        register_target.set(int(self.memory[address]))
         return 1, 2
 
     # 0x03, 0x13, 0x23, 0x33
@@ -1412,6 +1416,11 @@ class GameBoy:
                     self.ppu.step(num_m_cycles)
                     m_cycles_remaining -= num_m_cycles
                     continue
+
+                # DEBUG TODO
+                trace_pc = int(self.PC.get())
+                trace_op = int(self.memory[trace_pc])
+                #print(f"PC={trace_pc:04X} OP={trace_op:02X} A={int(self.A.get()):02X} F={int(self.F.get()):02X} BC={int(self.BC.get()):04X} DE={int(self.DE.get()):04X} HL={int(self.HL.get()):04X} SP={int(self.SP.get()):04X}")
 
                 # rest of logic
                 pc_orig = self.PC.get()
