@@ -31,13 +31,6 @@ class PPU:
     def __init__(self, memory):
         self.memory = memory
         self.scanline_m_cycles = 0
-        self.memory[0xFF40] = 0x91  # LCDC: LCD on, BG on, tile data 0x8000, BG map 0x9800
-        self.memory[0xFF41] = 0x85  # STAT
-        self.memory[0xFF42] = 0x00  # SCY
-        self.memory[0xFF43] = 0x00  # SCX
-        self.memory[0xFF44] = 0x00  # LY
-        self.memory[0xFF45] = 0x00  # LYC
-        self.memory[0xFF47] = 0xFC  # BGP
 
     # register helpers
     def lcd_enabled(self):
