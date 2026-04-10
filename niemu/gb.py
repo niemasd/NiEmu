@@ -469,7 +469,7 @@ class GameBoy:
         self.instructions[0xF7] = lambda: self.RST(0x30) # 0xF7 = RST 30H
         self.instructions[0xFF] = lambda: self.RST(0x38) # 0xFF = RST 38H
 
-        # define additional LD operations
+        # define additional LD instructions
         self.instructions[0xE0] = lambda: self.LD_a8_X(self.A)                # 0xE0 = LD (a8), A
         self.instructions[0xE2] = lambda: self.LD_addr_X_FF00(self.A, self.C) # 0xE2 = LD (C), A
         self.instructions[0xEA] = lambda: self.LD_a16_X(self.A)               # 0xEA = LD (a16), A
@@ -479,7 +479,7 @@ class GameBoy:
         self.instructions[0xFA] = lambda: self.LD_X_a16(self.A)               # 0xFA = LD A, (a16)
 
         ### define 0xCB?? instructions ###
-        # define SWAP operations
+        # define SWAP instructions
         self.instructions[0xCB][0x30] = lambda: self.SWAP_X(self.B)     # 0xCB30 = SWAP B
         self.instructions[0xCB][0x31] = lambda: self.SWAP_X(self.C)     # 0xCB31 = SWAP C
         self.instructions[0xCB][0x32] = lambda: self.SWAP_X(self.D)     # 0xCB32 = SWAP D
@@ -489,7 +489,7 @@ class GameBoy:
         self.instructions[0xCB][0x37] = lambda: self.SWAP_X(self.A)     # 0xCB37 = SWAP A
         self.instructions[0xCB][0x36] = lambda: self.SWAP_addr(self.HL) # 0xCB36 = SWAP (HL)
 
-        # define BIT ?, ? operations
+        # define BIT ?, ? instructions
         self.instructions[0xCB][0x40] = lambda: self.BIT(self.B, 0) # 0xCB40 = BIT 0, B
         self.instructions[0xCB][0x41] = lambda: self.BIT(self.C, 0) # 0xCB41 = BIT 0, C
         self.instructions[0xCB][0x42] = lambda: self.BIT(self.D, 0) # 0xCB42 = BIT 0, D
@@ -547,7 +547,7 @@ class GameBoy:
         self.instructions[0xCB][0x7D] = lambda: self.BIT(self.L, 7) # 0xCB7D = BIT 7, L
         self.instructions[0xCB][0x7F] = lambda: self.BIT(self.A, 7) # 0xCB7F = BIT 7, A
 
-        # define BIT ?, (??) operations
+        # define BIT ?, (??) instructions
         self.instructions[0xCB][0x46] = lambda: self.BIT_addr(self.HL, 0) # 0xCB46 = BIT 0, (HL)
         self.instructions[0xCB][0x4E] = lambda: self.BIT_addr(self.HL, 1) # 0xCB4E = BIT 1, (HL)
         self.instructions[0xCB][0x56] = lambda: self.BIT_addr(self.HL, 2) # 0xCB56 = BIT 2, (HL)
@@ -556,6 +556,142 @@ class GameBoy:
         self.instructions[0xCB][0x6E] = lambda: self.BIT_addr(self.HL, 5) # 0xCB6E = BIT 5, (HL)
         self.instructions[0xCB][0x76] = lambda: self.BIT_addr(self.HL, 6) # 0xCB76 = BIT 6, (HL)
         self.instructions[0xCB][0x7E] = lambda: self.BIT_addr(self.HL, 7) # 0xCB7E = BIT 7, (HL)
+
+        # define RES ?, ? instructions
+        self.instructions[0xCB][0x80] = lambda: self.RES(self.B, 0) # 0xCB80 = RES 0, B
+        self.instructions[0xCB][0x81] = lambda: self.RES(self.C, 0) # 0xCB81 = RES 0, C
+        self.instructions[0xCB][0x82] = lambda: self.RES(self.D, 0) # 0xCB82 = RES 0, D
+        self.instructions[0xCB][0x83] = lambda: self.RES(self.E, 0) # 0xCB83 = RES 0, E
+        self.instructions[0xCB][0x84] = lambda: self.RES(self.H, 0) # 0xCB84 = RES 0, H
+        self.instructions[0xCB][0x85] = lambda: self.RES(self.L, 0) # 0xCB85 = RES 0, L
+        self.instructions[0xCB][0x87] = lambda: self.RES(self.A, 0) # 0xCB87 = RES 0, A
+        self.instructions[0xCB][0x88] = lambda: self.RES(self.B, 1) # 0xCB88 = RES 1, B
+        self.instructions[0xCB][0x89] = lambda: self.RES(self.C, 1) # 0xCB89 = RES 1, C
+        self.instructions[0xCB][0x8A] = lambda: self.RES(self.D, 1) # 0xCB8A = RES 1, D
+        self.instructions[0xCB][0x8B] = lambda: self.RES(self.E, 1) # 0xCB8B = RES 1, E
+        self.instructions[0xCB][0x8C] = lambda: self.RES(self.H, 1) # 0xCB8C = RES 1, H
+        self.instructions[0xCB][0x8D] = lambda: self.RES(self.L, 1) # 0xCB8D = RES 1, L
+        self.instructions[0xCB][0x8F] = lambda: self.RES(self.A, 1) # 0xCB8F = RES 1, A
+        self.instructions[0xCB][0x90] = lambda: self.RES(self.B, 2) # 0xCB90 = RES 2, B
+        self.instructions[0xCB][0x91] = lambda: self.RES(self.C, 2) # 0xCB91 = RES 2, C
+        self.instructions[0xCB][0x92] = lambda: self.RES(self.D, 2) # 0xCB92 = RES 2, D
+        self.instructions[0xCB][0x93] = lambda: self.RES(self.E, 2) # 0xCB93 = RES 2, E
+        self.instructions[0xCB][0x94] = lambda: self.RES(self.H, 2) # 0xCB94 = RES 2, H
+        self.instructions[0xCB][0x95] = lambda: self.RES(self.L, 2) # 0xCB95 = RES 2, L
+        self.instructions[0xCB][0x97] = lambda: self.RES(self.A, 2) # 0xCB97 = RES 2, A
+        self.instructions[0xCB][0x98] = lambda: self.RES(self.B, 3) # 0xCB98 = RES 3, B
+        self.instructions[0xCB][0x99] = lambda: self.RES(self.C, 3) # 0xCB99 = RES 3, C
+        self.instructions[0xCB][0x9A] = lambda: self.RES(self.D, 3) # 0xCB9A = RES 3, D
+        self.instructions[0xCB][0x9B] = lambda: self.RES(self.E, 3) # 0xCB9B = RES 3, E
+        self.instructions[0xCB][0x9C] = lambda: self.RES(self.H, 3) # 0xCB9C = RES 3, H
+        self.instructions[0xCB][0x9D] = lambda: self.RES(self.L, 3) # 0xCB9D = RES 3, L
+        self.instructions[0xCB][0x9F] = lambda: self.RES(self.A, 3) # 0xCB9F = RES 3, A
+        self.instructions[0xCB][0xA0] = lambda: self.RES(self.B, 4) # 0xCBA0 = RES 4, B
+        self.instructions[0xCB][0xA1] = lambda: self.RES(self.C, 4) # 0xCBA1 = RES 4, C
+        self.instructions[0xCB][0xA2] = lambda: self.RES(self.D, 4) # 0xCBA2 = RES 4, D
+        self.instructions[0xCB][0xA3] = lambda: self.RES(self.E, 4) # 0xCBA3 = RES 4, E
+        self.instructions[0xCB][0xA4] = lambda: self.RES(self.H, 4) # 0xCBA4 = RES 4, H
+        self.instructions[0xCB][0xA5] = lambda: self.RES(self.L, 4) # 0xCBA5 = RES 4, L
+        self.instructions[0xCB][0xA7] = lambda: self.RES(self.A, 4) # 0xCBA7 = RES 4, A
+        self.instructions[0xCB][0xA8] = lambda: self.RES(self.B, 5) # 0xCBA8 = RES 5, B
+        self.instructions[0xCB][0xA9] = lambda: self.RES(self.C, 5) # 0xCBA9 = RES 5, C
+        self.instructions[0xCB][0xAA] = lambda: self.RES(self.D, 5) # 0xCBAA = RES 5, D
+        self.instructions[0xCB][0xAB] = lambda: self.RES(self.E, 5) # 0xCBAB = RES 5, E
+        self.instructions[0xCB][0xAC] = lambda: self.RES(self.H, 5) # 0xCBAC = RES 5, H
+        self.instructions[0xCB][0xAD] = lambda: self.RES(self.L, 5) # 0xCBAD = RES 5, L
+        self.instructions[0xCB][0xAF] = lambda: self.RES(self.A, 5) # 0xCBAF = RES 5, A
+        self.instructions[0xCB][0xB0] = lambda: self.RES(self.B, 6) # 0xCBB0 = RES 6, B
+        self.instructions[0xCB][0xB1] = lambda: self.RES(self.C, 6) # 0xCBB1 = RES 6, C
+        self.instructions[0xCB][0xB2] = lambda: self.RES(self.D, 6) # 0xCBB2 = RES 6, D
+        self.instructions[0xCB][0xB3] = lambda: self.RES(self.E, 6) # 0xCBB3 = RES 6, E
+        self.instructions[0xCB][0xB4] = lambda: self.RES(self.H, 6) # 0xCBB4 = RES 6, H
+        self.instructions[0xCB][0xB5] = lambda: self.RES(self.L, 6) # 0xCBB5 = RES 6, L
+        self.instructions[0xCB][0xB7] = lambda: self.RES(self.A, 6) # 0xCBB7 = RES 6, A
+        self.instructions[0xCB][0xB8] = lambda: self.RES(self.B, 7) # 0xCBB8 = RES 7, B
+        self.instructions[0xCB][0xB9] = lambda: self.RES(self.C, 7) # 0xCBB9 = RES 7, C
+        self.instructions[0xCB][0xBA] = lambda: self.RES(self.D, 7) # 0xCBBA = RES 7, D
+        self.instructions[0xCB][0xBB] = lambda: self.RES(self.E, 7) # 0xCBBB = RES 7, E
+        self.instructions[0xCB][0xBC] = lambda: self.RES(self.H, 7) # 0xCBBC = RES 7, H
+        self.instructions[0xCB][0xBD] = lambda: self.RES(self.L, 7) # 0xCBBD = RES 7, L
+        self.instructions[0xCB][0xBF] = lambda: self.RES(self.A, 7) # 0xCBBF = RES 7, A
+
+        # define RES ?, (??) instructions
+        self.instructions[0xCB][0x86] = lambda: self.RES_addr(self.HL, 0) # 0xCB86 = RES 0, (HL)
+        self.instructions[0xCB][0x8E] = lambda: self.RES_addr(self.HL, 1) # 0xCB8E = RES 1, (HL)
+        self.instructions[0xCB][0x96] = lambda: self.RES_addr(self.HL, 2) # 0xCB96 = RES 2, (HL)
+        self.instructions[0xCB][0x9E] = lambda: self.RES_addr(self.HL, 3) # 0xCB9E = RES 3, (HL)
+        self.instructions[0xCB][0xA6] = lambda: self.RES_addr(self.HL, 4) # 0xCBA6 = RES 4, (HL)
+        self.instructions[0xCB][0xAE] = lambda: self.RES_addr(self.HL, 5) # 0xCBAE = RES 5, (HL)
+        self.instructions[0xCB][0xB6] = lambda: self.RES_addr(self.HL, 6) # 0xCBB6 = RES 6, (HL)
+        self.instructions[0xCB][0xBE] = lambda: self.RES_addr(self.HL, 7) # 0xCBBE = RES 7, (HL)
+
+        # define SET ?, ? instructions
+        self.instructions[0xCB][0xC0] = lambda: self.SET(self.B, 0) # 0xCBC0 = SET 0, B
+        self.instructions[0xCB][0xC1] = lambda: self.SET(self.C, 0) # 0xCBC1 = SET 0, C
+        self.instructions[0xCB][0xC2] = lambda: self.SET(self.D, 0) # 0xCBC2 = SET 0, D
+        self.instructions[0xCB][0xC3] = lambda: self.SET(self.E, 0) # 0xCBC3 = SET 0, E
+        self.instructions[0xCB][0xC4] = lambda: self.SET(self.H, 0) # 0xCBC4 = SET 0, H
+        self.instructions[0xCB][0xC5] = lambda: self.SET(self.L, 0) # 0xCBC5 = SET 0, L
+        self.instructions[0xCB][0xC7] = lambda: self.SET(self.A, 0) # 0xCBC7 = SET 0, A
+        self.instructions[0xCB][0xC8] = lambda: self.SET(self.B, 1) # 0xCBC8 = SET 1, B
+        self.instructions[0xCB][0xC9] = lambda: self.SET(self.C, 1) # 0xCBC9 = SET 1, C
+        self.instructions[0xCB][0xCA] = lambda: self.SET(self.D, 1) # 0xCBCA = SET 1, D
+        self.instructions[0xCB][0xCB] = lambda: self.SET(self.E, 1) # 0xCBCB = SET 1, E
+        self.instructions[0xCB][0xCC] = lambda: self.SET(self.H, 1) # 0xCBCC = SET 1, H
+        self.instructions[0xCB][0xCD] = lambda: self.SET(self.L, 1) # 0xCBCD = SET 1, L
+        self.instructions[0xCB][0xCF] = lambda: self.SET(self.A, 1) # 0xCBCF = SET 1, A
+        self.instructions[0xCB][0xD0] = lambda: self.SET(self.B, 2) # 0xCBD0 = SET 2, B
+        self.instructions[0xCB][0xD1] = lambda: self.SET(self.C, 2) # 0xCBD1 = SET 2, C
+        self.instructions[0xCB][0xD2] = lambda: self.SET(self.D, 2) # 0xCBD2 = SET 2, D
+        self.instructions[0xCB][0xD3] = lambda: self.SET(self.E, 2) # 0xCBD3 = SET 2, E
+        self.instructions[0xCB][0xD4] = lambda: self.SET(self.H, 2) # 0xCBD4 = SET 2, H
+        self.instructions[0xCB][0xD5] = lambda: self.SET(self.L, 2) # 0xCBD5 = SET 2, L
+        self.instructions[0xCB][0xD7] = lambda: self.SET(self.A, 2) # 0xCBD7 = SET 2, A
+        self.instructions[0xCB][0xD8] = lambda: self.SET(self.B, 3) # 0xCBD8 = SET 3, B
+        self.instructions[0xCB][0xD9] = lambda: self.SET(self.C, 3) # 0xCBD9 = SET 3, C
+        self.instructions[0xCB][0xDA] = lambda: self.SET(self.D, 3) # 0xCBDA = SET 3, D
+        self.instructions[0xCB][0xDB] = lambda: self.SET(self.E, 3) # 0xCBDB = SET 3, E
+        self.instructions[0xCB][0xDC] = lambda: self.SET(self.H, 3) # 0xCBDC = SET 3, H
+        self.instructions[0xCB][0xDD] = lambda: self.SET(self.L, 3) # 0xCBDD = SET 3, L
+        self.instructions[0xCB][0xDF] = lambda: self.SET(self.A, 3) # 0xCBDF = SET 3, A
+        self.instructions[0xCB][0xE0] = lambda: self.SET(self.B, 4) # 0xCBE0 = SET 4, B
+        self.instructions[0xCB][0xE1] = lambda: self.SET(self.C, 4) # 0xCBE1 = SET 4, C
+        self.instructions[0xCB][0xE2] = lambda: self.SET(self.D, 4) # 0xCBE2 = SET 4, D
+        self.instructions[0xCB][0xE3] = lambda: self.SET(self.E, 4) # 0xCBE3 = SET 4, E
+        self.instructions[0xCB][0xE4] = lambda: self.SET(self.H, 4) # 0xCBE4 = SET 4, H
+        self.instructions[0xCB][0xE5] = lambda: self.SET(self.L, 4) # 0xCBE5 = SET 4, L
+        self.instructions[0xCB][0xE7] = lambda: self.SET(self.A, 4) # 0xCBE7 = SET 4, A
+        self.instructions[0xCB][0xE8] = lambda: self.SET(self.B, 5) # 0xCBE8 = SET 5, B
+        self.instructions[0xCB][0xE9] = lambda: self.SET(self.C, 5) # 0xCBE9 = SET 5, C
+        self.instructions[0xCB][0xEA] = lambda: self.SET(self.D, 5) # 0xCBEA = SET 5, D
+        self.instructions[0xCB][0xEB] = lambda: self.SET(self.E, 5) # 0xCBEB = SET 5, E
+        self.instructions[0xCB][0xEC] = lambda: self.SET(self.H, 5) # 0xCBEC = SET 5, H
+        self.instructions[0xCB][0xED] = lambda: self.SET(self.L, 5) # 0xCBED = SET 5, L
+        self.instructions[0xCB][0xEF] = lambda: self.SET(self.A, 5) # 0xCBEF = SET 5, A
+        self.instructions[0xCB][0xF0] = lambda: self.SET(self.B, 6) # 0xCBF0 = SET 6, B
+        self.instructions[0xCB][0xF1] = lambda: self.SET(self.C, 6) # 0xCBF1 = SET 6, C
+        self.instructions[0xCB][0xF2] = lambda: self.SET(self.D, 6) # 0xCBF2 = SET 6, D
+        self.instructions[0xCB][0xF3] = lambda: self.SET(self.E, 6) # 0xCBF3 = SET 6, E
+        self.instructions[0xCB][0xF4] = lambda: self.SET(self.H, 6) # 0xCBF4 = SET 6, H
+        self.instructions[0xCB][0xF5] = lambda: self.SET(self.L, 6) # 0xCBF5 = SET 6, L
+        self.instructions[0xCB][0xF7] = lambda: self.SET(self.A, 6) # 0xCBF7 = SET 6, A
+        self.instructions[0xCB][0xF8] = lambda: self.SET(self.B, 7) # 0xCBF8 = SET 7, B
+        self.instructions[0xCB][0xF9] = lambda: self.SET(self.C, 7) # 0xCBF9 = SET 7, C
+        self.instructions[0xCB][0xFA] = lambda: self.SET(self.D, 7) # 0xCBFA = SET 7, D
+        self.instructions[0xCB][0xFB] = lambda: self.SET(self.E, 7) # 0xCBFB = SET 7, E
+        self.instructions[0xCB][0xFC] = lambda: self.SET(self.H, 7) # 0xCBFC = SET 7, H
+        self.instructions[0xCB][0xFD] = lambda: self.SET(self.L, 7) # 0xCBFD = SET 7, L
+        self.instructions[0xCB][0xFF] = lambda: self.SET(self.A, 7) # 0xCBFF = SET 7, A
+
+        # define SET ?, (??) instructions
+        self.instructions[0xCB][0xC6] = lambda: self.SET_addr(self.HL, 0) # 0xCBC6 = SET 0, (HL)
+        self.instructions[0xCB][0xCE] = lambda: self.SET_addr(self.HL, 1) # 0xCBCE = SET 1, (HL)
+        self.instructions[0xCB][0xD6] = lambda: self.SET_addr(self.HL, 2) # 0xCBD6 = SET 2, (HL)
+        self.instructions[0xCB][0xDE] = lambda: self.SET_addr(self.HL, 3) # 0xCBDE = SET 3, (HL)
+        self.instructions[0xCB][0xE6] = lambda: self.SET_addr(self.HL, 4) # 0xCBE6 = SET 4, (HL)
+        self.instructions[0xCB][0xEE] = lambda: self.SET_addr(self.HL, 5) # 0xCBEE = SET 5, (HL)
+        self.instructions[0xCB][0xF6] = lambda: self.SET_addr(self.HL, 6) # 0xCBF6 = SET 6, (HL)
+        self.instructions[0xCB][0xFE] = lambda: self.SET_addr(self.HL, 7) # 0xCBFE = SET 7, (HL)
 
     # get flags
     def get_flag_Z(self): # Zero
@@ -1117,7 +1253,7 @@ class GameBoy:
         register.set(result)
         return 2, 4
 
-    # 0xCB40-0xCB7F
+    # 0xCB40-0xCB45, 0xCB47-0xCB4D, 0xCB4F-0xCB55, 0xCB57-0xCB5D, 0xCB5F-0xCB65, 0xCB67-0xCB6D, 0xCB6F-0xCB75, 0xCB77-0xCB7D, 0xCB7F
     def BIT(self, register, bit_num):
         if register.get_bit(bit_num):
             self.reset_flag_Z()
@@ -1127,7 +1263,7 @@ class GameBoy:
         self.set_flag_H()
         return 2, 2
 
-    # 0xCB46, 0xCB??
+    # 0xCB46, 0xCB4E, 0xCB56, 0xCB5E, 0xCB66, 0xCB6E, 0xCB76, 0xCB7E
     def BIT_addr(self, register_address, bit_num):
         if get_bit(self.memory[register_address.get()], bit_num):
             self.reset_flag_Z()
@@ -1136,6 +1272,28 @@ class GameBoy:
         self.reset_flag_N()
         self.set_flag_H()
         return 2, 3
+
+    # 0xCB80-0xCB85, 0xCB87-0xCB8D, 0xCB8F-0xCB95, 0xCB97-0xCB9D, 0xCB9F-0xCBA5, 0xCBA7-0xCBAD, 0xCBAF-0xCBB5, 0xCBB7-0xCBBD, 0xCBBF
+    def RES(self, register, bit_num):
+        register.reset_bit(bit_num)
+        return 2, 2
+
+    # 0xCB86, 0xCB8E, 0xCB96, 0xCB9E, 0xCBA6, 0xCBAE, 0xCBB6, 0xCBBE
+    def RES_addr(self, register_address, bit_num):
+        address = register_address.get()
+        self.memory[address] = reset_bit(self.memory[address], bit_num)
+        return 2, 4
+
+    # 0xCBC0-0xCBC5, 0xCBC7-0xCBCD, 0xCBCF-0xCBD5, 0xCBD7-0xCBDD, 0xCBDF-0xCBE5, 0xCBE7-0xCBED, 0xCBEF-0xCBF5, 0xCBF7-0xCBFD, 0xCBFF
+    def SET(self, register, bit_num):
+        register.set_bit(bit_num)
+        return 2, 2
+
+    # 0xCBC6, 0xCBCE, 0xCBD6, 0xCBDE, 0xCBE6, 0xCBEE, 0xCBF6, 0xCBFE
+    def SET_addr(self, register_address, bit_num):
+        address = register_address.get()
+        self.memory[address] = set_bit(self.memory[address], bit_num)
+        return 2, 4
 
     # load a game
     def load_game(self, path):
